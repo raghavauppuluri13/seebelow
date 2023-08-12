@@ -30,11 +30,19 @@ import time
 import cv2
 import numpy as np
 import pyrealsense2 as rs
+from pathlib import Path
+import datetime
+import os
+
+YAW = -0.009440897233111693
+PITCH = 0.025467074800567053
+TRANS = [0.0, 0.0, 0.10000008]
+DIST = 0.8999999999999992
+
 
 class AppState:
-
     def __init__(self, *args, **kwargs):
-        self.WIN_NAME = 'RealSense'
+        self.WIN_NAME = "RealSense"
         self.pitch, self.yaw = math.radians(-10), math.radians(-15)
         self.translation = np.array([0, 0, -1], dtype=np.float32)
         self.distance = 2
@@ -45,9 +53,18 @@ class AppState:
         self.scale = True
         self.color = True
 
+        self.pitch = PITCH
+        self.yaw = YAW
+        self.distance = DIST
+        self.translation = np.array(TRANS)
+
     def reset(self):
         self.pitch, self.yaw, self.distance = 0, 0, 2
         self.translation[:] = 0, 0, -1
+        self.pitch = PITCH
+        self.yaw = YAW
+        self.distance = DIST
+        self.translation = np.array(TRANS)
 
     @property
     def rotation(self):
@@ -72,7 +89,7 @@ device = pipeline_profile.get_device()
 
 found_rgb = False
 for s in device.sensors:
-    if s.get_info(rs.camera_info.name) == 'RGB Camera':
+    if s.get_info(rs.camera_info.name) == "RGB Camera":
         found_rgb = True
         break
 
@@ -91,7 +108,7 @@ w, h = depth_intrinsics.width, depth_intrinsics.height
 # Processing blocks
 pc = rs.pointcloud()
 decimate = rs.decimation_filter()
-decimate.set_option(rs.option.filter_magnitude, 2 ** state.decimate)
+decimate.set_option(rs.option.filter_magnitude, 2**state.decimate)
 colorizer = rs.colorizer()
 
 
@@ -139,6 +156,10 @@ def mouse_cb(event, x, y, flags, param):
         state.distance -= dz
 
     state.prev_mouse = (x, y)
+    print("YAW", state.yaw)
+    print("PITCH", state.pitch)
+    print("TRANS", state.translation)
+    print("DIST", state.distance)
 
 
 cv2.namedWindow(state.WIN_NAME, cv2.WINDOW_AUTOSIZE)
@@ -148,12 +169,14 @@ cv2.setMouseCallback(state.WIN_NAME, mouse_cb)
 def project(v):
     """project 3d vector array to 2d"""
     h, w = out.shape[:2]
-    view_aspect = float(h)/w
+    view_aspect = float(h) / w
 
     # ignore divide by zero for invalid depth
-    with np.errstate(divide='ignore', invalid='ignore'):
-        proj = v[:, :-1] / v[:, -1, np.newaxis] * \
-            (w*view_aspect, h) + (w/2.0, h/2.0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        proj = v[:, :-1] / v[:, -1, np.newaxis] * (w * view_aspect, h) + (
+            w / 2.0,
+            h / 2.0,
+        )
 
     # near clipping
     znear = 0.03
@@ -185,24 +208,29 @@ def grid(out, pos, rotation=np.eye(3), size=1, n=10, color=(0x80, 0x80, 0x80)):
     pos = np.array(pos)
     s = size / float(n)
     s2 = 0.5 * size
-    for i in range(0, n+1):
-        x = -s2 + i*s
-        line3d(out, view(pos + np.dot((x, 0, -s2), rotation)),
-               view(pos + np.dot((x, 0, s2), rotation)), color)
-    for i in range(0, n+1):
-        z = -s2 + i*s
-        line3d(out, view(pos + np.dot((-s2, 0, z), rotation)),
-               view(pos + np.dot((s2, 0, z), rotation)), color)
+    for i in range(0, n + 1):
+        x = -s2 + i * s
+        line3d(
+            out,
+            view(pos + np.dot((x, 0, -s2), rotation)),
+            view(pos + np.dot((x, 0, s2), rotation)),
+            color,
+        )
+    for i in range(0, n + 1):
+        z = -s2 + i * s
+        line3d(
+            out,
+            view(pos + np.dot((-s2, 0, z), rotation)),
+            view(pos + np.dot((s2, 0, z), rotation)),
+            color,
+        )
 
 
 def axes(out, pos, rotation=np.eye(3), size=0.075, thickness=2):
     """draw 3d axes"""
-    line3d(out, pos, pos +
-           np.dot((0, 0, size), rotation), (0xff, 0, 0), thickness)
-    line3d(out, pos, pos +
-           np.dot((0, size, 0), rotation), (0, 0xff, 0), thickness)
-    line3d(out, pos, pos +
-           np.dot((size, 0, 0), rotation), (0, 0, 0xff), thickness)
+    line3d(out, pos, pos + np.dot((0, 0, size), rotation), (0xFF, 0, 0), thickness)
+    line3d(out, pos, pos + np.dot((0, size, 0), rotation), (0, 0xFF, 0), thickness)
+    line3d(out, pos, pos + np.dot((size, 0, 0), rotation), (0, 0, 0xFF), thickness)
 
 
 def frustum(out, intrinsics, color=(0x40, 0x40, 0x40)):
@@ -211,6 +239,7 @@ def frustum(out, intrinsics, color=(0x40, 0x40, 0x40)):
     w, h = intrinsics.width, intrinsics.height
 
     for d in range(1, 6, 2):
+
         def get_point(x, y):
             p = rs.rs2_deproject_pixel_to_point(intrinsics, [x, y], d)
             line3d(out, orig, view(p), color)
@@ -262,105 +291,133 @@ def pointcloud(out, verts, texcoords, color, painter=True):
     else:
         v, u = (texcoords * (cw, ch) + 0.5).astype(np.uint32).T
     # clip texcoords to image
-    np.clip(u, 0, ch-1, out=u)
-    np.clip(v, 0, cw-1, out=v)
+    np.clip(u, 0, ch - 1, out=u)
+    np.clip(v, 0, cw - 1, out=v)
 
     # perform uv-mapping
     out[i[m], j[m]] = color[u[m], v[m]]
 
 
+data_dir = Path("./data")
+# Create dataset folders
+dataset_folder = datetime.datetime.now().strftime(
+    "{}/dataset_%m-%d-%Y_%H-%M-%S".format(data_dir.absolute())
+)
+os.mkdir(dataset_folder)
+
 out = np.empty((h, w, 3), dtype=np.uint8)
+i = 0
 
-while True:
-    # Grab camera data
-    if not state.paused:
-        # Wait for a coherent pair of frames: depth and color
-        frames = pipeline.wait_for_frames()
+try:
+    while True:
+        # Grab camera data
+        if not state.paused:
+            # Wait for a coherent pair of frames: depth and color
+            frames = pipeline.wait_for_frames()
 
-        depth_frame = frames.get_depth_frame()
-        color_frame = frames.get_color_frame()
+            depth_frame = frames.get_depth_frame()
+            color_frame = frames.get_color_frame()
 
-        depth_frame = decimate.process(depth_frame)
+            depth_frame = decimate.process(depth_frame)
 
-        # Grab new intrinsics (may be changed by decimation)
-        depth_intrinsics = rs.video_stream_profile(
-            depth_frame.profile).get_intrinsics()
-        w, h = depth_intrinsics.width, depth_intrinsics.height
+            # Grab new intrinsics (may be changed by decimation)
+            depth_intrinsics = rs.video_stream_profile(
+                depth_frame.profile
+            ).get_intrinsics()
+            w, h = depth_intrinsics.width, depth_intrinsics.height
 
-        depth_image = np.asanyarray(depth_frame.get_data())
-        color_image = np.asanyarray(color_frame.get_data())
+            depth_image = np.asanyarray(depth_frame.get_data())
+            color_image = np.asanyarray(color_frame.get_data())
 
-        depth_colormap = np.asanyarray(
-            colorizer.colorize(depth_frame).get_data())
+            print(depth_image.shape)
+            cv2.imwrite("depth.jpg", depth_image)
 
-        if state.color:
-            mapped_frame, color_source = color_frame, color_image
+            depth_colormap = np.asanyarray(colorizer.colorize(depth_frame).get_data())
+
+            if state.color:
+                mapped_frame, color_source = color_frame, color_image
+            else:
+                mapped_frame, color_source = depth_frame, depth_colormap
+
+            points = pc.calculate(depth_frame)
+            pc.map_to(mapped_frame)
+
+            # Pointcloud data to arrays
+            v, t = points.get_vertices(), points.get_texture_coordinates()
+            verts = np.asanyarray(v).view(np.float32).reshape(-1, 3)  # xyz
+            texcoords = np.asanyarray(t).view(np.float32).reshape(-1, 2)  # uv
+
+        # Render
+        now = time.time()
+
+        out.fill(0)
+
+        grid(out, (0, 0.5, 1), size=1, n=10)
+        frustum(out, depth_intrinsics)
+        axes(out, view([0, 0, 0]), state.rotation, size=0.1, thickness=1)
+
+        if not state.scale or out.shape[:2] == (h, w):
+            pointcloud(out, verts, texcoords, color_source)
         else:
-            mapped_frame, color_source = depth_frame, depth_colormap
+            tmp = np.zeros((h, w, 3), dtype=np.uint8)
+            pointcloud(tmp, verts, texcoords, color_source)
+            tmp = cv2.resize(tmp, out.shape[:2][::-1], interpolation=cv2.INTER_NEAREST)
+            np.putmask(out, tmp > 0, tmp)
 
-        points = pc.calculate(depth_frame)
-        pc.map_to(mapped_frame)
+        if any(state.mouse_btns):
+            axes(out, view(state.pivot), state.rotation, thickness=4)
 
-        # Pointcloud data to arrays
-        v, t = points.get_vertices(), points.get_texture_coordinates()
-        verts = np.asanyarray(v).view(np.float32).reshape(-1, 3)  # xyz
-        texcoords = np.asanyarray(t).view(np.float32).reshape(-1, 2)  # uv
+        dt = time.time() - now
 
-    # Render
-    now = time.time()
+        cv2.setWindowTitle(
+            state.WIN_NAME,
+            "RealSense (%dx%d) %dFPS (%.2fms) %s"
+            % (w, h, 1.0 / dt, dt * 1000, "PAUSED" if state.paused else ""),
+        )
 
-    out.fill(0)
+        cv2.imshow(state.WIN_NAME, out)
+        cv2.imwrite(f"{dataset_folder}/{i}.jpg", out)
+        i += 1
+        key = cv2.waitKey(1)
 
-    grid(out, (0, 0.5, 1), size=1, n=10)
-    frustum(out, depth_intrinsics)
-    axes(out, view([0, 0, 0]), state.rotation, size=0.1, thickness=1)
+        if key == ord("r"):
+            state.reset()
 
-    if not state.scale or out.shape[:2] == (h, w):
-        pointcloud(out, verts, texcoords, color_source)
-    else:
-        tmp = np.zeros((h, w, 3), dtype=np.uint8)
-        pointcloud(tmp, verts, texcoords, color_source)
-        tmp = cv2.resize(
-            tmp, out.shape[:2][::-1], interpolation=cv2.INTER_NEAREST)
-        np.putmask(out, tmp > 0, tmp)
+        if key == ord("p"):
+            state.paused ^= True
 
-    if any(state.mouse_btns):
-        axes(out, view(state.pivot), state.rotation, thickness=4)
+        if key == ord("d"):
+            state.decimate = (state.decimate + 1) % 3
+            print(state.decimate)
+            decimate.set_option(rs.option.filter_magnitude, 2**state.decimate)
 
-    dt = time.time() - now
+        if key == ord("z"):
+            state.scale ^= True
 
-    cv2.setWindowTitle(
-        state.WIN_NAME, "RealSense (%dx%d) %dFPS (%.2fms) %s" %
-        (w, h, 1.0/dt, dt*1000, "PAUSED" if state.paused else ""))
+        if key == ord("c"):
+            state.color ^= True
 
-    cv2.imshow(state.WIN_NAME, out)
-    key = cv2.waitKey(1)
+        if key == ord("s"):
+            cv2.imwrite("./out.png", out)
 
-    if key == ord("r"):
-        state.reset()
+        if key == ord("e"):
+            points.export_to_ply("./out.ply", mapped_frame)
 
-    if key == ord("p"):
-        state.paused ^= True
-
-    if key == ord("d"):
-        state.decimate = (state.decimate + 1) % 3
-        print(state.decimate)
-        decimate.set_option(rs.option.filter_magnitude, 2 ** state.decimate)
-
-    if key == ord("z"):
-        state.scale ^= True
-
-    if key == ord("c"):
-        state.color ^= True
-
-    if key == ord("s"):
-        cv2.imwrite('./out.png', out)
-
-    if key == ord("e"):
-        points.export_to_ply('./out.ply', mapped_frame)
-
-    if key in (27, ord("q")) or cv2.getWindowProperty(state.WIN_NAME, cv2.WND_PROP_AUTOSIZE) < 0:
-        break
+        if (
+            key in (27, ord("q"))
+            or cv2.getWindowProperty(state.WIN_NAME, cv2.WND_PROP_AUTOSIZE) < 0
+        ):
+            break
+except KeyboardInterrupt:
+    pass
 
 # Stop streaming
 pipeline.stop()
+
+save = input("Save or not? (enter 0 or 1)")
+save = bool(int(save))
+
+if not save:
+    import shutil
+
+    shutil.rmtree(f"{dataset_folder}")
