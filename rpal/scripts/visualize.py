@@ -30,7 +30,7 @@ from pathlib import Path
 
 
 class MainWindow(Qt.QMainWindow):
-    def __init__(self, dataset_path, data_file_path, parent=None):
+    def __init__(self, dataset_path, data_file_path, parent=None, pcd_viz=False):
 
         Qt.QMainWindow.__init__(self)
         self.frame = Qt.QFrame()
@@ -65,10 +65,12 @@ class MainWindow(Qt.QMainWindow):
         )
 
         # Set up the GUI layout with two images on the left and four subplots on the right
+        self.pcd_viz = pcd_viz
 
-        self.curr = Mesh(str(self.pcd_dir / f"{self.current_index}.ply"))
+        if self.pcd_viz:
+            self.curr = Mesh(str(self.pcd_dir / f"{self.current_index}.ply"))
+            self.pcd_layout.addWidget(self.widget)
         self.plt = Plotter(interactive=True, axes=0, qt_widget=self.widget)
-        self.pcd_layout.addWidget(self.widget)
 
         # Matplotlib figure with four subplots
         self.fig, self.axs = plt.subplots(2, 1, figsize=(10, 10))
@@ -78,7 +80,7 @@ class MainWindow(Qt.QMainWindow):
         # Timer to update the GUI
         self.timer = Qt.QTimer()
         self.timer.timeout.connect(self.update)
-        self.timer.start(20)  # 50ms delay
+        self.timer.start(1)  # 50ms delay
 
         self.layout.addLayout(self.plot_layout)
         self.layout.addLayout(self.pcd_layout)
@@ -88,39 +90,42 @@ class MainWindow(Qt.QMainWindow):
 
         self.axs[0].clear()
         self.axs[1].clear()
-        self.plt.show(self.curr, __doc__, camera=self.cam)
+        if self.pcd_viz:
+            self.plt.show(self.curr, __doc__, camera=self.cam)
         self.show()
 
     def update(self):
-        self.next_mesh = Mesh(str(self.pcd_dir / f"{self.current_index}.ply"))
-        self.plt += self.next_mesh
-        self.plt -= self.curr
-        self.curr = self.next_mesh
+        if self.pcd_viz:
+            self.next_mesh = Mesh(str(self.pcd_dir / f"{self.current_index}.ply"))
+            self.plt += self.next_mesh
+            self.plt -= self.curr
+            self.curr = self.next_mesh
 
         # Update Matplotlib Plot
+        N = 100
         data_point = self.data[self.current_index]
+        data_slice = self.data[self.current_index : self.current_index + N]
         colors = ["r", "g", "b"]
         labels_position = ["X Position", "Y Position", "Z Position"]
         labels_force = ["Force X (N)", "Force Y (N)", "Force Z (N)"]
 
         # Update Position Subplot
         self.axs[0].clear()
-        for i in range(3):
-            self.plot_data_position[i].append(data_point[i])
+        for i in range(2, 3):
+            self.plot_data_position[i].extend(data_slice[:, i].tolist())
             self.axs[0].plot(
                 self.plot_data_position[i], color=colors[i], label=labels_position[i]
             )
         self.axs[0].legend()
         self.axs[0].set_title("Position")
+        self.axs[0].autoscale_view()
 
         # Update Force Subplot
         self.axs[1].clear()
-        for i in range(3, 6):
-            self.plot_data_force[i - 3].append(data_point[i])
+        for i in range(3):
+            self.plot_data_force[i].extend(data_slice[:, -3 + i].tolist())
             self.axs[1].plot(
-                self.plot_data_force[i - 3],
-                color=colors[i - 3],
-                label=labels_force[i - 3],
+                self.plot_data_force[i], color=colors[i], label=labels_force[i]
             )
         self.axs[1].legend()
         self.axs[1].autoscale_view()
@@ -129,10 +134,12 @@ class MainWindow(Qt.QMainWindow):
         self.canvas.draw_idle()
 
         # Increment index
-        self.current_index += 1
+        self.current_index += N
         if self.current_index >= self.data.shape[0]:
             self.current_index = 0
-            QCoreApplication.instance().quit()
+            self.timer.stop()
+            return
+            # QCoreApplication.instance().quit()
 
     def onClose(self):
         self.widget.close()

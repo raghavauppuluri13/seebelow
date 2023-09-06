@@ -298,12 +298,12 @@ def pointcloud(out, verts, texcoords, color, painter=True):
     out[i[m], j[m]] = color[u[m], v[m]]
 
 
-data_dir = Path("./data")
+# data_dir = Path("./data")
 # Create dataset folders
-dataset_folder = datetime.datetime.now().strftime(
-    "{}/dataset_%m-%d-%Y_%H-%M-%S".format(data_dir.absolute())
-)
-os.mkdir(dataset_folder)
+# dataset_folder = datetime.datetime.now().strftime(
+#    "{}/dataset_%m-%d-%Y_%H-%M-%S".format(data_dir.absolute())
+# )
+# os.mkdir(dataset_folder)
 
 out = np.empty((h, w, 3), dtype=np.uint8)
 i = 0
@@ -414,10 +414,11 @@ except KeyboardInterrupt:
 # Stop streaming
 pipeline.stop()
 
+"""
 save = input("Save or not? (enter 0 or 1)")
 save = bool(int(save))
-
 if not save:
     import shutil
 
     shutil.rmtree(f"{dataset_folder}")
+"""

@@ -1,5 +1,6 @@
 import open3d as o3d
 import numpy as np
+import yaml
 import time
 
 import queue
@@ -27,20 +28,19 @@ class Buffer:
 
 
 class DatasetWriter:
-    def __init__(self):
+    def __init__(self, cfg_args, record_pcd=True, print_hz=True):
         import datetime
-        from devices import ForceSensor, RealsenseCapture
+        from devices import RealsenseCapture
         from utils import Hz
         from pathlib import Path
         import os
         import threading
 
-        self.force_cap = ForceSensor()
+        self.record_pcd = record_pcd
 
-        self.rs_cap = RealsenseCapture()
         self.stop_event = threading.Event()
 
-        self.hz = Hz(print_hz=True)
+        self.hz = Hz(print_hz=print_hz)
         self.save_buffer = []
         self.i = 0
 
@@ -52,19 +52,25 @@ class DatasetWriter:
         self.raw_pcd_dir = self.dataset_folder / "raw_pcd"
         self.timeseries_file = self.dataset_folder / "timeseries.txt"
         os.mkdir(self.dataset_folder)
-        os.mkdir(self.raw_pcd_dir)
 
-        self.pcd_buffer = Buffer(10)
-        self.pcd_thread = threading.Thread(
-            target=thread_read, args=(self.pcd_buffer, self.rs_cap, self.stop_event)
-        )
-        self.pcd_thread.start()
+        if self.record_pcd:
+            os.mkdir(self.raw_pcd_dir)
+            self.pcd_thread.start()
+            self.rs_cap = RealsenseCapture()
+            self.pcd_buffer = Buffer(10)
+            self.pcd_thread = threading.Thread(
+                target=thread_read, args=(self.pcd_buffer, self.rs_cap, self.stop_event)
+            )
+
+        with open(str(self.dataset_folder / "config.yml"), "w") as outfile:
+            yaml.dump(vars(cfg_args), outfile, default_flow_style=False)
 
     def save(self):
         self.stop_event.set()
-        self.pcd_thread.join()
+        if self.record_pcd:
+            self.pcd_thread.join()
 
-        np.savetxt(str(self.timeseries_file), self.save_buffer, fmt="%1.4f")
+        np.savetxt(str(self.timeseries_file), self.save_buffer, fmt="%1.8f")
 
         save = input("Save or not? (enter 0 or 1)")
         save = bool(int(save))
@@ -74,18 +80,20 @@ class DatasetWriter:
 
             shutil.rmtree(f"{str(self.dataset_folder)}")
 
-    def update(self, d_eef_position):
-        pcd = self.pcd_buffer.get()
-        Fxyz = self.force_cap.read()
+    def update(self, d_eef_pos_quat, Fxyz):
+        if self.record_pcd:
+            pcd = self.pcd_buffer.get()
         if Fxyz is not None:
             self.hz.clock()
-            x = np.zeros(6)  # (x,y,z,fx,fy,fz)
-            x[:3] = d_eef_position
-            x[3:] = Fxyz
+            x = np.zeros(10)  # (x,y,z,x,y,z,w,fx,fy,fz)
+            x[:3] = d_eef_pos_quat[1].flatten()
+            x[3:7] = d_eef_pos_quat[0].flatten()
+            x[7:10] = Fxyz
             self.save_buffer.append(x)
-            o3d.io.write_point_cloud(
-                str((self.raw_pcd_dir / f"{self.i}.ply").absolute()), pcd
-            )
+            if self.record_pcd:
+                o3d.io.write_point_cloud(
+                    str((self.raw_pcd_dir / f"{self.i}.ply").absolute()), pcd
+                )
             self.i += 1
 
 
@@ -119,6 +127,42 @@ class Hz:
 
     def get_hz(self):
         return self.buffer.mean()
+
+
+def get_rot_mat_from_basis(b1, b2, b3):
+    A = np.eye(3)
+    A[:, 0] = b1
+    A[:, 1] = b2
+    A[:, 2] = b3
+    return A.T
+
+
+def rot_from_a_to_b(a: np.ndarray, b: np.ndarray):
+    cross_1_2 = np.cross(a, b)
+    skew_symm_cross_1_2 = np.array(
+        [
+            [0, -cross_1_2[2], cross_1_2[1]],
+            [cross_1_2[2], 0, -cross_1_2[0]],
+            [-cross_1_2[1], cross_1_2[0], 0],
+        ]
+    )
+    cos = np.dot(a, b)
+    R = (
+        np.identity(3)
+        + skew_symm_cross_1_2
+        + np.dot(skew_symm_cross_1_2, skew_symm_cross_1_2) * 1 / (1 + cos + 1e-15)
+    )
+    return R
+
+
+def three_pts_to_rot_mat(p1, p2, p3, neg_x=False):
+    xaxis = unit(p2 - p1)
+    if neg_x:
+        xaxis *= -1
+    v_another = unit(p3 - p1)
+    zaxis = -unit(np.cross(xaxis, v_another))
+    yaxis = unit(np.cross(zaxis, xaxis))
+    return get_rot_mat_from_basis(xaxis, yaxis, zaxis)
 
 
 def crop_pcd(pcd, R, t, scale, bbox_params, visualize=False):
@@ -166,7 +210,7 @@ def unit(v):
     return v / np.linalg.norm(v)
 
 
-def visualize_pcds(pcds, frames=[]):
+def visualize_pcds(pcds, frames=[], tfs=[]):
 
     frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
         size=0.1,  # specify the size of coordinate frame
@@ -179,6 +223,13 @@ def visualize_pcds(pcds, frames=[]):
                 size=0.1, origin=list(frame)  # specify the size of coordinate frame
             )
         )
+
+    for tf in tfs:
+        f = o3d.geometry.TriangleMesh.create_coordinate_frame(
+            size=0.1  # specify the size of coordinate frame
+        )
+        f.transform(tf)
+        pcds.append(f)
 
     # Get the camera parameters of the visualization window
     vis = o3d.visualization.Visualizer()

@@ -15,6 +15,8 @@ from utils import DatasetWriter
 
 logger = get_deoxys_example_logger()
 
+SAMPLE_RATE = 30  # hz
+
 NO_TUMOR_J = [
     0.30956509,
     0.36256234,
@@ -98,40 +100,44 @@ def main():
 
     robot_interface._state_buffer = []
 
-    INIT_EEF = None
-    CURR_EEF = None
+    init_eef_pose = None
+    curr_eef_pose = None
     FORCE = None
 
+    sample_time = time.perf_counter()
+
     try:
-        for i in range(10000):
-            start_time = time.time_ns()
+        while True:
+            start_time = time.perf_counter()
 
             action = np.zeros(7)
-            if CURR_EEF is not None:
-                d = CURR_EEF[2, 3]
+            if curr_eef_pose is not None:
+                d = curr_eef_pose[2, 3]
                 if d >= -0.013:
                     action[2] = -0.05
+                else:
+                    break
 
             robot_interface.control(
                 controller_type=controller_type,
                 action=action,
                 controller_cfg=controller_cfg,
             )
-            end_time = time.time_ns()
+            end_time = time.perf_counter()
             print(f"Time duration: {((end_time - start_time) / (10**9))}")
 
             if len(robot_interface._state_buffer) == 0:
                 continue
-            if INIT_EEF is None:
-                INIT_EEF = robot_interface.last_eef_pose
+            if init_eef_pose is None:
+                init_eef_pose = robot_interface.last_eef_pose
             else:
-                CURR_EEF = robot_interface.last_eef_pose - INIT_EEF
-                dataset_writer.update(CURR_EEF[:3, 3])
+                if time.perf_counter() - sample_time >= 1.0 / SAMPLE_RATE:
+                    curr_eef_pose = robot_interface.last_eef_pose - init_eef_pose
+                    dataset_writer.update(curr_eef_pose[:3, 3])
+                    sample_time = time.perf_counter()
 
     except KeyboardInterrupt:
         pass
-
-    dataset_writer.save()
 
     reset(TUMOR_J if args.tumor else NO_TUMOR_J, robot_interface)
 
@@ -144,12 +150,7 @@ def main():
 
     robot_interface.close()
 
-    # Check if there is any state frame missing
-    for (state, next_state) in zip(
-        robot_interface._state_buffer[:-1], robot_interface._state_buffer[1:]
-    ):
-        if (next_state.frame - state.frame) > 1:
-            print(state.frame, next_state.frame)
+    dataset_writer.save()
 
 
 if __name__ == "__main__":

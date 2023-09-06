@@ -2,30 +2,40 @@ import numpy as np
 import os
 import cv2
 import time
+from scipy.spatial.transform import Rotation
 import open3d as o3d
 import argparse
 import datetime
 
-from utils import visualize_pcds, unit, get_centered_bbox, crop_pcd
+from utils import (
+    visualize_pcds,
+    unit,
+    get_centered_bbox,
+    crop_pcd,
+    get_rot_mat_from_basis,
+    three_pts_to_rot_mat,
+)
 
+EVAL_scale = 1
 EVAL_R = np.array(
     [
-        [0.78598308, 0.53488944, -0.31003851],
-        [-0.60047267, 0.54107235, -0.58878968],
-        [-0.14718412, 0.64894838, 0.7464602],
+        [-0.80397832, -0.57559227, 0.14937338],
+        [0.59348632, -0.76090159, 0.2623028],
+        [-0.03732103, 0.29953682, 0.95335452],
     ]
 )
-EVAL_t = np.array([0.01657456, 0.06089821, -0.23600002])
-EVAL_BBOX_PARAMS = [0.07, -0.01, 0.05, -0.05, 0.05, -0.05]
-EVAL_scale = 1
+EVAL_t = np.array([-0.06189939, -0.01550329, -0.19499999])
+EVAL_BBOX_PARAMS = [0.14, -0.01, 0.05, -0.05, 0.05, -0.05]
 
 
-def get_rot_mat_from_basis(b1, b2, b3):
-    A = np.eye(3)
-    A[:, 0] = b1
-    A[:, 1] = b2
-    A[:, 2] = b3
-    return A.T
+O_p_PH_0 = np.array([0.59473506, 0.06602833, 0.0616792])
+O_p_PH_1 = np.array([0.53661529, 0.18703561, 0.0616792])
+O_p_PH_2 = np.array([0.52858962, 0.18280019, 0.0616792])
+
+O_R_PH = three_pts_to_rot_mat(O_p_PH_0, O_p_PH_1, O_p_PH_2, neg_x=False)
+O_T_PH = np.eye(4)
+O_T_PH[:3, :3] = O_R_PH
+O_T_PH[:3, 3] = O_p_PH_0
 
 
 def get_calibration(pcd):
@@ -86,18 +96,44 @@ if __name__ == "__main__":
     else:
         R, t, scale = get_calibration(pcd)
 
-    pcd = crop_pcd(pcd, R, t, scale, EVAL_BBOX_PARAMS, visualize=True)
+    pcd = crop_pcd(pcd, R, t, scale, EVAL_BBOX_PARAMS, visualize=False)
     pcd.compute_convex_hull()
+
     pcd.estimate_normals()
     pcd.orient_normals_consistent_tangent_plane(10)
     mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
-        pcd, linear_fit=True
+        pcd, linear_fit=True, depth=5
     )[0]
+    mesh = mesh.filter_smooth_simple(number_of_iterations=5)
     mesh.compute_vertex_normals()
     mesh.remove_degenerate_triangles()
 
-    visualize_pcds([pcd])
-    visualize_pcds([mesh])
+    # visualize_pcds([pcd])
+    vn = np.asarray(mesh.vertex_normals)
+    v = np.asarray(mesh.vertices)
+    i = 30
+    i = 340
+    vn_p = vn[i]
+    v_p = v[i]
+    print(vn_p)
+    print(v_p)
+
+    R = Rotation.align_vectors(np.array([vn_p]), np.array([[0, 0, 1]]))[0].as_matrix()
+
+    O_T_P = np.eye(4)
+    O_T_P[:3, :3] = R
+    O_T_P[:3, 3] = v_p
+
+    visualize_pcds([mesh], tfs=[np.linalg.inv(O_T_PH), O_T_P])
+
+    MESH_BBOX_PARAMS = [0.13, 0.01, 0.05, -0.05, 0.1, -0.1]
+    mesh = crop_pcd(mesh, np.eye(3), np.zeros(3), 1, MESH_BBOX_PARAMS, visualize=False)
+
+    mesh = mesh.transform(O_T_PH)
+
+    o3d.io.write_triangle_mesh("./out_mesh.ply", mesh)
+
+    print("T = np.", repr(O_T_PH))
 
     print("R = np.", repr(R))
     print("t = np.", repr(t))
