@@ -30,6 +30,7 @@ from interpolator import Interpolator, InterpType
 
 logger = get_deoxys_example_logger()
 SAMPLE_RATE = 30  # hz
+RPAL_HYBRID_POSITION_FORCE = "RPAL_HYBRID_POSITION_FORCE"
 GRID_DIMS = np.array([0.01, 0.04])
 
 np.random.seed(100)
@@ -149,8 +150,6 @@ if __name__ == "__main__":
     phantom_pcd.orient_normals_consistent_tangent_plane(k=100)
     phantom_pcd = phantom_pcd.crop(bbox)
 
-    dataset_writer.save_cropped_surface_pcd(phantom_pcd)
-
     N = 100  # Number of samples
     A = len(np.asarray(phantom_pcd.points))
     random_sample = np.random.randint(0, A, N)
@@ -198,6 +197,7 @@ if __name__ == "__main__":
     subsurface_pts = []
     subsurface_pt = None
     max_dist = -np.inf
+    using_force_control = False
 
     Frms_LIMIT = 8.0
 
@@ -228,15 +228,8 @@ if __name__ == "__main__":
                 Fxyz = Fxyz_temp
                 Frms = np.sqrt(np.sum(Fxyz**2))
 
-            if Frms > Frms_LIMIT:
-                print(curr_pose_se3.translation)
-                # subsurface_pts.append(robot_interface.last_eef_rot_and_pos[1])
-                print("FORCE EXCEEDED!: ", Frms)
-                print("CURRENT_STATE: ", palp_state.state)
             if palp_state.state == PalpateState.PALPATE and Frms > Frms_LIMIT:
-                palp_state.next()
-                pose_goal = goals.pop()
-                interp.init(curr_pose_se3, pose_goal, steps=100)
+                using_force_control = True
 
             if len(goals) > 0 and interp.done:
                 palp_state.next()
@@ -272,22 +265,32 @@ if __name__ == "__main__":
             curr_eef_quat_pos = robot_interface.last_eef_quat_and_pos
             dataset_writer.update(curr_eef_quat_pos, Fxyz)
 
-            action = np.zeros(7)
-            next_se3_pose = interp.next()
-            xyz_quat = pin.SE3ToXYZQUAT(next_se3_pose)
-            axis_angle = quat2axisangle(xyz_quat[3:7])
+            if using_force_control:
+                action = np.zeros(9)
+                action[6] = 1
+                robot_interface.control(
+                    controller_type=RPAL_HYBRID_POSITION_FORCE,
+                    action=action,
+                    controller_cfg=controller_cfg,
+                )
+            else:
+                action = np.zeros(7)
+                next_se3_pose = interp.next()
+                xyz_quat = pin.SE3ToXYZQUAT(next_se3_pose)
+                axis_angle = quat2axisangle(xyz_quat[3:7])
 
-            # print(se3_pose)
-            action[:3] = xyz_quat[:3]
-            action[3:6] = axis_angle
+                # print(se3_pose)
+                action[:3] = xyz_quat[:3]
+                action[3:6] = axis_angle
 
-            # print(action)
+                # print(action)
 
-            robot_interface.control(
-                controller_type=controller_type,
-                action=action,
-                controller_cfg=controller_cfg,
-            )
+                robot_interface.control(
+                    controller_type=controller_type,
+                    action=action,
+                    controller_cfg=controller_cfg,
+                )
+
             end_time = time.perf_counter()
             # print(f"Time duration: {((end_time - start_time) / (10**9))}")
     except KeyboardInterrupt:
