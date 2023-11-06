@@ -20,6 +20,39 @@ from interpolator import Interpolator, InterpType
 
 logger = get_deoxys_example_logger()
 
+
+def get_rotated_vector(angle):
+    theta = np.radians(angle)
+
+    # Rotation matrix for rotating around x-axis
+    rot_x = np.array(
+        [
+            [1, 0, 0],
+            [0, np.cos(theta), -np.sin(theta)],
+            [0, np.sin(theta), np.cos(theta)],
+        ]
+    )
+
+    rot_y = np.array(
+        [
+            [np.cos(theta), 0, np.sin(theta)],
+            [0, 1, 0],
+            [-np.sin(theta), 0, np.cos(theta)],
+        ]
+    )
+
+    # Unit vector in z-axis
+    z_unit = np.array([0, 0, -1])
+
+    # Apply rotation to z_unit
+    z_rotated = np.dot(rot_y, z_unit)
+
+    # Normalize the resulting vector to get the unit vector
+    z_unit_rotated = z_rotated / np.linalg.norm(z_rotated)
+
+    return z_unit_rotated
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -45,10 +78,13 @@ if __name__ == "__main__":
     robot_interface._state_buffer = []
 
     action = np.zeros(9)
-    action[6] = 1
+    z_rot_15_deg = 2 * get_rotated_vector(30)
+    z = 1 * np.array([0, 0, -1])
+    action[-3:] = z_rot_15_deg
 
     try:
         while True:
+            print("action: ", action)
             robot_interface.control(
                 controller_type=controller_type,
                 action=action,
@@ -59,6 +95,9 @@ if __name__ == "__main__":
         pass
 
     # stop
-    robot_interface.control(termination=True)
+    action = np.zeros(9)
+    robot_interface.control(
+        controller_type=controller_type, action=action, termination=True
+    )
 
     robot_interface.close()
