@@ -12,6 +12,8 @@ class SquaredExpKernel:
 
     def cov(self, X: np.ndarray, X_prime: np.ndarray = None, noise_var=0.01):
         """using the kernel, generates a covariance matrix"""
+        if X_prime is None:
+            X_prime = X
         assert X.shape[-1] == 2
         X_reshaped = np.expand_dims(X, axis=-2)
         X_prime_reshaped = np.expand_dims(X_prime, axis=1)
@@ -52,7 +54,6 @@ class GP:
 
 
 if __name__ == "__main__":
-
     gp = GP(1, 2)
 
     obs = np.array(

@@ -10,7 +10,9 @@ import pinocchio as pin
 
 
 from interpolator import Interpolator, InterpType
-from utils import visualize_pcds, unit_vector, pose2mat
+from utils_3d import visualize_pcds
+from utils_tf import pose2mat
+from utils_math import unit
 
 
 parser = argparse.ArgumentParser(description="Time-series Heatmap Generator")
@@ -97,7 +99,7 @@ for t in range(len(data)):
     F = T[:3, :3] @ F
 
     if np.linalg.norm(F) > 4:
-        F_unit = unit_vector(F)
+        F_unit = unit(F)
         O_p_f2 = O_p[:3] + F_unit
         FT_p1s.append(O_p[:3])
         FT_p2s.append(O_p_f2)
