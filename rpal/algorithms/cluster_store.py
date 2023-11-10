@@ -38,6 +38,27 @@ class Idx2D:
         return (self._x, self._y)
 
 
+class GridMap2D:
+    def __init__(self, w, l, grid_size=0.001):
+        self._w = w
+        self._l = l
+        self._grid_size = grid_size
+
+    def normalize(self, x):
+        pass
+
+    def unnormalize(self, idx):
+        pass
+
+    @property
+    def shape(self):
+        return (self._w, self._l)
+
+    @property
+    def grid_size(self):
+        return self._grid_size
+
+
 class SurfaceGridMap:
     def __init__(self, pcd, grid_size=0.001, nn=10):
         self._pcd = pcd

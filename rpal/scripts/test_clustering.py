@@ -16,23 +16,20 @@ if __name__ == "__main__":
     gridmap = SurfaceGridMap(phantom_pcd)
     # gridmap.visualize()
 
-    kernel = SquaredExpKernel(scale=2)
+    kernel = SquaredExpKernel(scale=0.5)
     qt_dim = max(gridmap.shape)
     qt_dim += 10
     qt_dim = (qt_dim // 10) * 10
     group_dim = 5
+    print(qt_dim)
     group_quadtree = QuadTree(qt_dim, qt_dim, group_dim, group_dim)
+    group_quadtree.area
 
-    aas = ActiveAreaSearch(gridmap, group_quadtree, kernel)
-
-    samples = np.array(
-        [
-            [0, 0, 1],
-            [0, 8, 1],
-            [8, 0, 2],
-            [8, 8, 1],
-        ]
+    aas = ActiveAreaSearch(
+        gridmap, group_quadtree, kernel, noise_var=0.01, threshold=5, confidence=0.7
     )
+
+    samples = np.array([[5, 5, 8], [0, 8, 2], [8, 0, 4], [8, 8, 1]])
 
     for sample in samples:
         next_state = aas.get_optimal_state(sample[:2], sample[-1], normalized=True)

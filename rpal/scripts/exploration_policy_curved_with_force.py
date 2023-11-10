@@ -28,6 +28,38 @@ import pinocchio as pin
 
 from interpolator import Interpolator, InterpType
 
+import numpy as np
+
+
+class RingBuffer:
+    def __init__(self, capacity, stability_threshold=0.01):
+        self.capacity = capacity
+        self.buffer = np.empty(capacity, dtype=float)
+        self.index = 0
+        self.full = False
+        self.stability_threshold = stability_threshold
+
+    def append(self, value):
+        self.buffer[self.index] = value
+        self.index = (self.index + 1) % self.capacity
+        if self.index == 0:
+            self.full = True
+
+    def get(self):
+        if self.full:
+            return np.roll(self.buffer, -self.index)
+        return self.buffer[: self.index]
+
+    @property
+    def is_stable(self):
+        if self.full:
+            return np.std(self.buffer) < self.stability_threshold
+        return False
+
+    def __str__(self):
+        return str(self.get())
+
+
 logger = get_deoxys_example_logger()
 SAMPLE_RATE = 30  # hz
 RPAL_HYBRID_POSITION_FORCE = "RPAL_HYBRID_POSITION_FORCE"
@@ -66,7 +98,6 @@ def uniform_sampling_1d(min_pose, max_pose):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--interface-cfg", type=str, default="./an-an-force.yml")
     parser.add_argument("--controller-type", type=str, default="OSC_POSE")
@@ -166,7 +197,7 @@ if __name__ == "__main__":
     goals = deque([O_T_overhead])
 
     def palpate(pos, O_v_surf_norm_unit=np.array([0, 0, 1])):
-        ABOVE_HEIGHT = 0.03
+        ABOVE_HEIGHT = 0.02
         PALPATE_DEPTH = 0.035
         O_z_axis = np.array([[0, 0, 1]])
 
@@ -181,7 +212,10 @@ if __name__ == "__main__":
         )[0].as_matrix()
 
         palp_se3 = pin.SE3.Identity()
-        palp_se3.translation = pos - PALPATE_DEPTH * O_v_surf_norm_unit
+
+        FORCE_MAG = 5  # N
+        # TODO: hacky way to give force control commands
+        palp_se3.translation = FORCE_MAG * -O_v_surf_norm_unit
         palp_se3.rotation = R
 
         above_se3 = pin.SE3.Identity()
@@ -189,7 +223,7 @@ if __name__ == "__main__":
         above_se3.rotation = R
 
         goals.appendleft(above_se3)
-        goals.appendleft(palp_se3)
+        # goals.appendleft(palp_se3)
         goals.appendleft(O_T_overhead)
 
     palp_state = PalpateState()
@@ -198,6 +232,9 @@ if __name__ == "__main__":
     subsurface_pt = None
     max_dist = -np.inf
     using_force_control = False
+    wrench_goal = None
+    start_data_collection = False
+    force_buffer = RingBuffer(100, 0.05)
 
     Frms_LIMIT = 8.0
 
@@ -227,19 +264,26 @@ if __name__ == "__main__":
             if Fxyz_temp is not None:
                 Fxyz = Fxyz_temp
                 Frms = np.sqrt(np.sum(Fxyz**2))
+            force_buffer.append(Frms)
 
-            if palp_state.state == PalpateState.PALPATE and Frms > Frms_LIMIT:
-                using_force_control = True
+            if using_force_control and force_buffer.is_stable:
+                print("FORCE STABLE!")
+                robot_interface.close()
+                start_data_collection = False
+                using_force_control = False
+                palp_state.next()
 
             if len(goals) > 0 and interp.done:
                 palp_state.next()
                 print(palp_state.state)
-
-                steps = 100
                 if palp_state.state == PalpateState.PALPATE:
-                    steps = 2000
+                    robot_interface.close()
+                    using_force_control = True
+                    wrench_goal = goals.pop().position
+                steps = 100
                 pose_goal = goals.pop()
                 interp.init(curr_pose_se3, pose_goal, steps=steps)
+
             elif len(goals) == 0 and interp.done:
                 # next_pose = uniform_sampling_1d(
                 #    p_base_phantom_linear_lower, p_base_phantom_linear_upper
@@ -249,25 +293,20 @@ if __name__ == "__main__":
                 palp_pos, surf_normal = pts.popleft()
                 palpate(palp_pos, surf_normal)
 
-            if palp_state.state == PalpateState.PALPATE:
-                dist = np.linalg.norm(
-                    pose_goal.translation - robot_interface.last_eef_rot_and_pos[1]
-                )
-                if dist > max_dist:
-                    max_dist = max(dist, max_dist)
-                    subsurface_pt = robot_interface.last_eef_rot_and_pos[1]
-                print("PALPATING!")
-            else:
-                if not np.allclose(max_dist, -np.inf):
-                    subsurface_pts.append(subsurface_pt)
-                    max_dist = -np.inf
+            if palp_state.state == PalpateState.PALPATE and Frms > Frms_LIMIT:
+                start_data_collection = True
+                print("START DATA COLLECTION!")
+            if start_data_collection:
+                subsurface_pt = robot_interface.last_eef_rot_and_pos[1]
+                subsurface_pts.append(subsurface_pt)
 
             curr_eef_quat_pos = robot_interface.last_eef_quat_and_pos
             dataset_writer.update(curr_eef_quat_pos, Fxyz)
 
             if using_force_control:
                 action = np.zeros(9)
-                action[6] = 1
+                assert wrench_goal is not None
+                action[-3:] = wrench_goal
                 robot_interface.control(
                     controller_type=RPAL_HYBRID_POSITION_FORCE,
                     action=action,
@@ -282,7 +321,6 @@ if __name__ == "__main__":
                 # print(se3_pose)
                 action[:3] = xyz_quat[:3]
                 action[3:6] = axis_angle
-
                 # print(action)
 
                 robot_interface.control(

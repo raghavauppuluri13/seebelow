@@ -54,7 +54,6 @@ def get_rotated_vector(angle):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--interface-cfg", type=str, default="./an-an-force.yml")
     parser.add_argument("--controller-type", type=str, default="OSC_POSE")
@@ -96,8 +95,6 @@ if __name__ == "__main__":
 
     # stop
     action = np.zeros(9)
-    robot_interface.control(
-        controller_type=controller_type, action=action, termination=True
-    )
+    robot_interface.control(termination=True)
 
     robot_interface.close()
