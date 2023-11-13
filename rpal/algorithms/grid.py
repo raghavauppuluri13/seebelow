@@ -50,6 +50,7 @@ class Grid:
         gx = np.arange(0, self._grid.shape[0])
         gy = np.arange(0, self._grid.shape[1])
         Xx, Xy = np.meshgrid(gx, gy)
+
         states = np.array([Xx.reshape(-1), Xy.reshape(-1)]).transpose()
         states = states[:, np.newaxis, :]
         return states
