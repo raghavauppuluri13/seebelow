@@ -9,7 +9,7 @@ from scipy.spatial import KDTree
 from scipy.stats import norm
 from rpal.algorithms.gp import GP
 from rpal.algorithms.gp import SquaredExpKernel
-from rpal.algorithms.cluster_store import SurfaceGridMap
+from rpal.algorithms.grid import SurfaceGridMap
 from collections import defaultdict
 from rpal.algorithms.quadtree import QuadTree
 
@@ -58,17 +58,7 @@ class ActiveAreaSearch:
         y = np.array(self.Y)  # shape: (len(X), 1)
         y = y[:, np.newaxis]
 
-        nx, ny = self.grid.shape
-        gx = np.arange(0, self.grid.shape[0])
-        gy = np.arange(0, self.grid.shape[1])
-        X_grid = np.meshgrid(gx, gy)
-
-        # vectorize reward computation over all states (S) in grid -> (S, 2)
-        X_s = np.concatenate(
-            [X_grid[0].reshape(-1, 1), X_grid[1].reshape(-1, 1)], axis=1
-        )
-        print(X_s)
-        X_s = X_s[:, np.newaxis, :]
+        X_s = self.grid.vectorized_states
         print("X_s", X_s.shape)
         X_hat = np.zeros((X_s.shape[0], X.shape[0] + 1, self.state_dim))
         X_hat[:, :-1, :] = X
@@ -95,7 +85,7 @@ class ActiveAreaSearch:
 
             # Z, eqn 12
             # times 2 was added as V is symmetric
-            Zg = kern_sum * 2 / self.group_quadtree.group_area ** 2
+            Zg = kern_sum * 2 / self.group_quadtree.group_area**2
             print("Zg", Zg.shape)
 
             V_sum = V_hat[:, -1, group_X_idxs]
@@ -145,7 +135,7 @@ class ActiveAreaSearch:
             v_g_tilde_term = w_g_s - k_s_X @ V_inv @ w_g
             print("v_g_tilde_term", v_g_tilde_term.shape)
             v_g_tilde = v_g_tilde_term / (v_sD[:, :, np.newaxis] + 1e-8)
-            beta2_g_tilde = beta2_g - v_g_tilde ** 2
+            beta2_g_tilde = beta2_g - v_g_tilde**2
             print("v_g_tilde", v_g_tilde.shape)
             print("beta2_g_tilde", beta2_g_tilde.shape)
             assert np.all(beta2_g_tilde >= 0), print(beta2_g_tilde.min(axis=0))

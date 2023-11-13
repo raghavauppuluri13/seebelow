@@ -1,5 +1,6 @@
 import numpy as np
 import yaml
+import open3d as o3d
 import time
 import math
 import queue
@@ -62,7 +63,6 @@ class DatasetWriter:
     def __init__(self, cfg_args, record_pcd=True, print_hz=True):
         import datetime
         from devices import RealsenseCapture
-        from utils import Hz
         from pathlib import Path
         import os
         import threading

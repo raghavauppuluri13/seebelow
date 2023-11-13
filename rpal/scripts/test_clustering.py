@@ -8,12 +8,10 @@ from rpal.algorithms.active_area_search import ActiveAreaSearch
 from rpal.algorithms.quadtree import QuadTree
 
 if __name__ == "__main__":
-    surface_pcd_path = Path(
-        "/home/raghava/projects/robot-palpation/rpal/scripts/surface.ply"
+    surface_mesh_path = Path(
+        "/home/raghava/projects/robot-palpation/rpal/scripts/phantom_mesh.ply"
     )
-    phantom_pcd = o3d.io.read_point_cloud(str(surface_pcd_path.absolute()))
-    phantom_v = np.asarray(phantom_pcd.points)
-    gridmap = SurfaceGridMap(phantom_pcd)
+    gridmap = SurfaceGridMap(surface_mesh_path)
     # gridmap.visualize()
 
     kernel = SquaredExpKernel(scale=0.5)

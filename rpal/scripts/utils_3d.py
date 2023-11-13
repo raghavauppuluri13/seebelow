@@ -2,6 +2,33 @@ import open3d as o3d
 import numpy as np
 
 
+def pick_surface_bbox(pcd):
+    print("")
+    print(
+        "1) Please pick 4 point as the corners your bounding box [shift + left click]."
+    )
+    print("   Press [shift + right click] to undo point picking")
+    print("2) After picking points, press 'Q' to close the window")
+    vis = o3d.visualization.VisualizerWithEditing()
+    vis.create_window()
+    vis.add_geometry(pcd)
+    vis.run()  # user picks points
+    vis.destroy_window()
+    points_idx = vis.get_picked_points()
+    pcd_npy = np.asarray(pcd.points)
+    bbox_pts = np.zeros((8, 3))
+    pts = pcd_npy[points_idx]
+    pts[:, -1] += 0.5
+    bbox_pts[:4] = pts
+    pts[:, -1] -= 1
+    bbox_pts[4:8] = pts
+
+    bbox = o3d.geometry.OrientedBoundingBox.create_from_points(
+        o3d.utility.Vector3dVector(bbox_pts)
+    )
+    return bbox
+
+
 def crop_pcd(pcd, R, t, scale, bbox_params, visualize=False):
     # pretranslate
     T = np.eye(4)

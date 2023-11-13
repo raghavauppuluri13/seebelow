@@ -5,7 +5,7 @@ def unit(v):
     return v / np.linalg.norm(v)
 
 
-def get_rot_mat_from_basis(b1, b2, b3):
+def rot_mat_from_bases(b1, b2, b3):
     A = np.eye(3)
     A[:, 0] = b1
     A[:, 1] = b2

@@ -20,7 +20,8 @@ from scipy.spatial.transform import Rotation
 
 from devices import ForceSensor
 
-from utils import DatasetWriter, Hz, three_pts_to_rot_mat
+from utils_data import DatasetWriter, Hz
+from utils_math import unit, three_pts_to_rot_mat
 
 from pinocchio.rpy import matrixToRpy, rpyToMatrix
 
@@ -151,30 +152,7 @@ if __name__ == "__main__":
     phantom_pcd = o3d.geometry.PointCloud()
     phantom_pcd.points = o3d.utility.Vector3dVector(np.asarray(phantom_mesh.vertices))
 
-    print("")
-    print(
-        "1) Please pick 4 point as the corners your bounding box [shift + left click]."
-    )
-    print("   Press [shift + right click] to undo point picking")
-    print("2) After picking points, press 'Q' to close the window")
-    vis = o3d.visualization.VisualizerWithEditing()
-    vis.create_window()
-    vis.add_geometry(phantom_pcd)
-    vis.run()  # user picks points
-    vis.destroy_window()
-    points_idx = vis.get_picked_points()
-    pcd_npy = np.asarray(phantom_pcd.points)
-    bbox_pts = np.zeros((8, 3))
-    pts = pcd_npy[points_idx]
-
-    pts[:, -1] += 0.5
-    bbox_pts[:4] = pts
-    pts[:, -1] -= 1
-    bbox_pts[4:8] = pts
-
-    bbox = o3d.geometry.OrientedBoundingBox.create_from_points(
-        o3d.utility.Vector3dVector(bbox_pts)
-    )
+    bbox = pick_surface_bbox(phantom_pcd)
 
     phantom_pcd.estimate_normals()
     phantom_pcd.normalize_normals()
@@ -212,10 +190,7 @@ if __name__ == "__main__":
         )[0].as_matrix()
 
         palp_se3 = pin.SE3.Identity()
-
-        FORCE_MAG = 5  # N
-        # TODO: hacky way to give force control commands
-        palp_se3.translation = FORCE_MAG * -O_v_surf_norm_unit
+        palp_se3.translation = pos - PALPATE_DEPTH * O_v_surf_norm_unit
         palp_se3.rotation = R
 
         above_se3 = pin.SE3.Identity()
@@ -223,7 +198,7 @@ if __name__ == "__main__":
         above_se3.rotation = R
 
         goals.appendleft(above_se3)
-        # goals.appendleft(palp_se3)
+        goals.appendleft(palp_se3)
         goals.appendleft(O_T_overhead)
 
     palp_state = PalpateState()
@@ -237,6 +212,16 @@ if __name__ == "__main__":
     force_buffer = RingBuffer(100, 0.05)
 
     Frms_LIMIT = 8.0
+    PALP_WRENCH_MAG = 5  # N
+
+    def state_transition():
+        palp_state.next()
+        print(palp_state.state)
+        steps = 100
+        if palp_state.state == PalpateState.PALPATE:
+            steps = 2000
+        pose_goal = goals.pop()
+        interp.init(curr_pose_se3, pose_goal, steps=steps)
 
     try:
         while len(robot_interface._state_buffer) == 0:
@@ -268,21 +253,13 @@ if __name__ == "__main__":
 
             if using_force_control and force_buffer.is_stable:
                 print("FORCE STABLE!")
-                robot_interface.close()
+                time.sleep(1)
                 start_data_collection = False
                 using_force_control = False
-                palp_state.next()
+                state_transition()
 
             if len(goals) > 0 and interp.done:
-                palp_state.next()
-                print(palp_state.state)
-                if palp_state.state == PalpateState.PALPATE:
-                    robot_interface.close()
-                    using_force_control = True
-                    wrench_goal = goals.pop().position
-                steps = 100
-                pose_goal = goals.pop()
-                interp.init(curr_pose_se3, pose_goal, steps=steps)
+                state_transition()
 
             elif len(goals) == 0 and interp.done:
                 # next_pose = uniform_sampling_1d(
@@ -291,10 +268,17 @@ if __name__ == "__main__":
                 if len(pts) == 0:
                     break
                 palp_pos, surf_normal = pts.popleft()
+                wrench_goal = PALP_WRENCH_MAG * -surf_normal
                 palpate(palp_pos, surf_normal)
 
-            if palp_state.state == PalpateState.PALPATE and Frms > Frms_LIMIT:
+            if (
+                palp_state.state == PalpateState.PALPATE
+                and Frms > Frms_LIMIT
+                and not using_force_control
+            ):
+                using_force_control = True
                 start_data_collection = True
+                time.sleep(1)
                 print("START DATA COLLECTION!")
             if start_data_collection:
                 subsurface_pt = robot_interface.last_eef_rot_and_pos[1]
@@ -304,6 +288,7 @@ if __name__ == "__main__":
             dataset_writer.update(curr_eef_quat_pos, Fxyz)
 
             if using_force_control:
+                print("Using force control!")
                 action = np.zeros(9)
                 assert wrench_goal is not None
                 action[-3:] = wrench_goal

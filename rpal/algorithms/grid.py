@@ -1,6 +1,7 @@
 import numpy as np
 import open3d as o3d
 from typing import Type, TypeVar, Tuple
+from functools import cached_property
 
 from rpal.scripts.utils_3d import visualize_pcds
 from rpal.scripts.utils_math import unit, project_axis_to_plane
@@ -38,33 +39,53 @@ class Idx2D:
         return (self._x, self._y)
 
 
-class GridMap2D:
-    def __init__(self, w, l, grid_size=0.001):
-        self._w = w
-        self._l = l
+class Grid:
+    def __init__(self):
+        self._grid = None
+
+    @cached_property
+    def vectorized_states(self):
+        nx, ny = self.shape
+        nx, ny = (10, 10)
+        gx = np.arange(0, self._grid.shape[0])
+        gy = np.arange(0, self._grid.shape[1])
+        Xx, Xy = np.meshgrid(gx, gy)
+        states = np.array([Xx.reshape(-1), Xy.reshape(-1)]).transpose()
+        states = states[:, np.newaxis, :]
+        return states
+
+    def __getitem__(self, index):
+        r, c = index
+        return self._grid[r, c]
+
+    def sample_states_uniform(self):
+        vectorized_states = self.vectorized_states
+        state = vectorized_states[np.random.randint(0, vectorized_states.shape[0])]
+        return list(state.flatten())
+
+
+class GridMap2D(Grid):
+    def __init__(self, r, c, grid_size=0.001):
+        self._r = r
+        self._c = c
         self._grid_size = grid_size
-
-    def normalize(self, x):
-        pass
-
-    def unnormalize(self, idx):
-        pass
+        self._grid = np.zeros((self._r, self._c))
 
     @property
     def shape(self):
-        return (self._w, self._l)
+        return (self._r, self._c)
 
     @property
     def grid_size(self):
         return self._grid_size
 
 
-class SurfaceGridMap:
+class SurfaceGridMap(Grid):
     def __init__(self, pcd, grid_size=0.001, nn=10):
-        self._pcd = pcd
         self._grid_size = grid_size
         self._nn = nn
 
+        self._pcd = pcd
         self._pcd.estimate_normals()
         self._pcd.normalize_normals()
         self._pcd.orient_normals_consistent_tangent_plane(k=100)
@@ -80,6 +101,8 @@ class SurfaceGridMap:
         origin = verts[origin_idx]
         corners = verts[corner_pt_idxs]
         vecs = corners[1:] - origin
+
+        # argsort by distance to ensure first two are xaxis and yaxis
         vecs = vecs[np.argsort(np.linalg.norm(vecs, axis=1))]
         zaxis_origin = norms[origin_idx]
 
@@ -101,6 +124,7 @@ class SurfaceGridMap:
         )
         self._T[:3, 3] = origin
 
+        # use surface bounding box to stop grid expansion
         self._bbox = self._pcd.get_oriented_bounding_box()
         self._bbox.scale(2, center=vert_center)
         self._bbox.color = [1, 0, 0]
@@ -155,6 +179,7 @@ class SurfaceGridMap:
 
         idxs = np.asarray(list(self.grid_idx2cell_idx.keys()))
         self._grid_shape = list(np.max(idxs, axis=0))
+        self._grid = np.zeros(self._grid_shape)
 
         self._grid_arr = np.zeros((len(self.grid_idx2cell_idx), 3))
         # populate grid pcd
