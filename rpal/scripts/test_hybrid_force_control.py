@@ -12,12 +12,6 @@ from deoxys.utils import YamlConfig
 from deoxys.utils.io_devices import SpaceMouse
 from deoxys.utils.log_utils import get_deoxys_example_logger
 
-from devices import ForceSensor
-
-from utils import DatasetWriter, Hz, three_pts_to_rot_mat
-
-from interpolator import Interpolator, InterpType
-
 logger = get_deoxys_example_logger()
 
 
@@ -78,8 +72,8 @@ if __name__ == "__main__":
 
     action = np.zeros(9)
     z_rot_15_deg = 2 * get_rotated_vector(30)
-    z = 1 * np.array([0, 0, -1])
-    action[-3:] = z_rot_15_deg
+    z = 7 * np.array([0, 0, -1])
+    action[-3:] = z
 
     try:
         while True:

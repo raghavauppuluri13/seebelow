@@ -86,7 +86,7 @@ class SurfaceGridMap(Grid):
 
         self._pcd = pcd
         self._pcd.estimate_normals()
-        self._pcd.pt_to_idx_normals()
+        self._pcd.normalize_normals()
         self._pcd.orient_normals_consistent_tangent_plane(k=100)
 
         verts = np.asarray(self._pcd.points)

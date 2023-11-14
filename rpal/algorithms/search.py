@@ -12,6 +12,7 @@ from rpal.algorithms.bayesian_optimization import BayesianOptimization
 class RandomSearch:
     def __init__(self, pcd):
         self.pcd = pcd
+        self.grid = SurfaceGridMap(pcd, grid_size=0.001)
         self.pcd_len = len(np.asarray(pcd.points))
 
     def next(self):

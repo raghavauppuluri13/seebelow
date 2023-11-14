@@ -18,20 +18,20 @@ from deoxys.utils.log_utils import get_deoxys_example_logger
 
 from scipy.spatial.transform import Rotation
 
-from devices import ForceSensor
-
+from rpal.utils.devices import ForceSensor
 from rpal.utils.data_utils import DatasetWriter, Hz
 from rpal.utils.math_utils import unit, three_pts_to_rot_mat
 from rpal.utils.pcd_utils import surface_mesh_to_pcd
-from rpal.algorithms.search import Random, ActiveSearch, ActiveSearchAlgos
 from rpal.utils.sensor_utils import RingBuffer
 from rpal.utils.useful_poses import O_T_CAM, O_xaxis
+from rpal.utils.interpolator import Interpolator, InterpType
+
+from rpal.algorithms.search import RandomSearch, ActiveSearch, ActiveSearchAlgos
 
 from pinocchio.rpy import matrixToRpy, rpyToMatrix
 
 import pinocchio as pin
 
-from interpolator import Interpolator, InterpType
 
 import numpy as np
 
@@ -78,17 +78,18 @@ if __name__ == "__main__":
     dataset_writer = DatasetWriter(args, record_pcd=False, print_hz=False)
     interp = Interpolator(interp_type=InterpType.SE3)
 
-    search = Random(phantom_pcd)
-    search = ActiveSearch(phantom_pcd, ActiveSearchAlgos.BO)
+    surface_pcd_cropped = surface_mesh_to_pcd("./phantom_mesh.ply")
+    search = RandomSearch(surface_pcd_cropped)
+    search.grid.visualize()
+    # search = ActiveSearch(phantom_pcd, ActiveSearchAlgos.BO)
 
-    Frms_LIMIT = 8.0
+    Frms_LIMIT = 5.0
     PALP_WRENCH_MAG = 5  # N
     BUFFER_SIZE = 100
     BUFFER_STABILITY_THRESHOLD = 0.05
     ABOVE_HEIGHT = 0.02
     PALPATE_DEPTH = 0.035
 
-    phantom_pcd = surface_mesh_to_pcd("./phantom_mesh.ply")
     sample_time = time.perf_counter()
     goals = deque([O_T_CAM])
     palp_state = PalpateState()
@@ -111,6 +112,8 @@ if __name__ == "__main__":
     STEP_SLOW = 2000
     Frms = 0.0
     Fxyz = 0.0
+    max_stiffness = -np.inf
+    palp_pt = None
 
     def palpate(pos, O_surf_norm_unit=np.array([0, 0, 1])):
         O_zaxis = np.array([[0, 0, 1]])
@@ -159,6 +162,7 @@ if __name__ == "__main__":
             curr_pose_se3.rotation = curr_eef_pose[0]
             curr_pose_se3.translation = curr_eef_pose[1]
 
+            """
             print(
                 "rot error: ",
                 np.linalg.norm(interp._goal.rotation - curr_pose_se3.rotation),
@@ -167,6 +171,7 @@ if __name__ == "__main__":
                 "translation error: ",
                 np.linalg.norm(interp._goal.translation - curr_pose_se3.translation),
             )
+            """
 
             Fxyz_temp = force_cap.read()
             if Fxyz_temp is not None:
@@ -177,36 +182,32 @@ if __name__ == "__main__":
 
             if using_force_control and force_buffer.is_stable:
                 print("FORCE STABLE!")
-                time.sleep(1)
                 start_data_collection = False
                 using_force_control = False
+                max_stiffness = -np.inf
                 state_transition()
 
             if len(goals) > 0 and interp.done:
                 state_transition()
 
             elif len(goals) == 0 and interp.done:
-                if len(pts) == 0:
-                    break
                 palp_pt, surf_normal = search.next()
                 wrench_goal = PALP_WRENCH_MAG * -surf_normal
                 palpate(palp_pt, surf_normal)
 
-            if (
-                palp_state.state == PalpateState.PALPATE
-                and Frms > Frms_LIMIT
-                and not using_force_control
-            ):
-                using_force_control = True
-                start_data_collection = True
-                time.sleep(1)
-                print("START DATA COLLECTION!")
+            if palp_state.state == PalpateState.PALPATE:
+                assert palp_pt is not None
+                stiffness = Frms / np.linalg.norm(palp_pt - curr_pose_se3.translation)
+                max_stiffness = max(stiffness, max_stiffness)
+                # search.update_outcome(palp_pt, max_stiffness)
+
+                if Frms > Frms_LIMIT and not using_force_control:
+                    using_force_control = True
+                    start_data_collection = True
+                    print("START DATA COLLECTION!")
             if start_data_collection:
                 subsurface_pt = robot_interface.last_eef_rot_and_pos[1]
                 subsurface_pts.append(subsurface_pt)
-
-            stiffness = Frms / np.linalg.norm(palp_pt - curr_pose_se3.translation)
-            search.update_outcome(palp_pt, stiffness)
 
             curr_eef_quat_pos = robot_interface.last_eef_quat_and_pos
             dataset_writer.update(curr_eef_quat_pos, Fxyz)
@@ -248,9 +249,6 @@ if __name__ == "__main__":
 
     # stop
     robot_interface.control(
-        controller_type=controller_type,
-        action=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] + [1.0],
-        controller_cfg=controller_cfg,
         termination=True,
     )
 

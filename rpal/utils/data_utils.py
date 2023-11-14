@@ -62,7 +62,7 @@ class Buffer:
 class DatasetWriter:
     def __init__(self, cfg_args, record_pcd=True, print_hz=True):
         import datetime
-        from devices import RealsenseCapture
+        from rpal.utils.devices import RealsenseCapture
         from pathlib import Path
         import os
         import threading
