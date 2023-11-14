@@ -2,6 +2,24 @@ import open3d as o3d
 import numpy as np
 
 
+def surface_mesh_to_pcd(mesh_path):
+    surface_mesh = o3d.io.read_triangle_mesh(mesh_path)
+    surface_mesh = surface_mesh.subdivide_midpoint(number_of_iterations=2)
+    surface_mesh.compute_vertex_normals()
+    surface_mesh.remove_degenerate_triangles()
+
+    surface_pcd = o3d.geometry.PointCloud()
+    surface_pcd.points = o3d.utility.Vector3dVector(np.asarray(surface_mesh.vertices))
+
+    bbox = pick_surface_bbox(surface_pcd)
+
+    surface_pcd.estimate_normals()
+    surface_pcd.normalize_normals()
+    surface_pcd.orient_normals_consistent_tangent_plane(k=100)
+    surface_pcd = surface_pcd.crop(bbox)
+    return surface_pcd
+
+
 def pick_surface_bbox(pcd):
     print("")
     print(

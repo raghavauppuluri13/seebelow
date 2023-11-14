@@ -38,18 +38,14 @@ class ActiveAreaSearch:
         self.threshold = threshold
         self.confidence = confidence
 
-    def get_optimal_state(
-        self, prev_x_hat: np.ndarray, prev_y: float, normalized=False
-    ):
+    def get_optimal_state(self, prev_x_hat: np.ndarray, prev_y: float):
         """Gets optimal state given previous states and observed f(x) values
         prev_sample_x_hat: previous state shape=(state_dim,1)
         prev_sample_y: previous observed f(x)
         """
         assert prev_x_hat.shape == (self.state_dim,), print(prev_x_hat.shape)
 
-        idx = self.surface_grid.normalize(x_hat) if not normalized else prev_x_hat
-
-        self.X.append(idx)
+        self.X.append(prev_x_hat)
         self.Y.append(prev_y)
 
         self.group_quadtree.insert(idx, len(self.X) - 1)
@@ -152,11 +148,9 @@ class ActiveAreaSearch:
 
             print(reward_g.max())
 
-        optimal_state = np.argmax(reward)
-
+        optimal_state = X_s[np.argmax(reward)]
         print(optimal_state)
-
-        return self.grid.unnormalize(optimal_state)
+        return optimal_state
 
 
 if __name__ == "__main__":

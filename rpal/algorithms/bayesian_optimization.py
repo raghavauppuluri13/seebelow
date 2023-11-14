@@ -1,28 +1,22 @@
 import numpy as np
 from scipy.stats import norm
 from rpal.algorithms.gp import GP, SquaredExpKernel
-from rpal.algorithms.grid import SurfaceGridMap, GridMap2D
+from rpal.algorithms.grid import SurfaceGridMap, GridMap2D, Grid
 from rpal.algorithms.gui import HeatmapAnimation
 
 from scipy.ndimage import gaussian_filter
 
-# seed = 0
-# np.random.seed(seed)
-
 
 class BayesianOptimization:
-    def __init__(self, grid: SurfaceGridMap, gp: GP):
-        self.gp = gp
+    def __init__(self, grid: Grid, kernel):
+        self.gp = GP()
         self.grid = grid
-
         self.grid_mean = np.zeros(grid.shape)
-
         self.y_max = None
 
-    def get_optimal_state(
-        self, prev_x_hat: np.ndarray, prev_y: float, normalized=False
-    ):
+    def get_optimal_state(self, prev_x_hat: np.ndarray, prev_y: float):
         self.y_max = max(self.y_max, prev_y) if self.y_max is not None else prev_y
+        print(prev_y)
         self.gp.add_sample(prev_x_hat, prev_y)
 
         all_states = self.grid.vectorized_states
@@ -74,8 +68,6 @@ def add_spots(grid_size, num_spots, spot_intensity, variance):
         x, y = np.random.randint(0, grid_size[0]), np.random.randint(0, grid_size[1])
         data[x, y] = spot_intensity  # Set the spot intensity
 
-    print(data)
-
     # Apply Gaussian filter for smoothing
     smoothed_data = gaussian_filter(data, sigma=variance)
     print(smoothed_data.max())
@@ -85,15 +77,13 @@ def add_spots(grid_size, num_spots, spot_intensity, variance):
 if __name__ == "__main__":
     grid_size = (20, 20)
     grid = GridMap2D(*grid_size)
+    spots = add_spots(grid_size, 1, 10, 1.0)
+    grid.grid = spots
+    # grid.grid += np.random.normal(0, 0.01, grid_size)
+    # grid.grid[grid.grid < 0] = 0
 
-    spots = add_spots(grid_size, 3, 10, 1.0)
-    print(spots)
-    grid._grid = spots
-    # grid._grid += np.random.normal(0, 0.01, grid_size)
-    # grid._grid[grid._grid < 0] = 0
-
-    gp = GP(SquaredExpKernel(scale=1))
-    bo = BayesianOptimization(grid, gp)
+    kernel = SquaredExpKernel(scale=1)
+    bo = BayesianOptimization(grid, kernel)
 
     saved_posterior_means = []
 
@@ -101,12 +91,11 @@ if __name__ == "__main__":
     x_next = grid.sample_states_uniform()
     y = grid[x_next]
     for i in range(100):
-        x_next = bo.get_optimal_state(x_next, y, normalized=False)
+        x_next = bo.get_optimal_state(x_next, y)
         print("x_next", x_next)
         saved_posterior_means.append(
-            (x_next, np.copy(bo.grid_mean), np.copy(grid._grid))
+            (x_next, np.copy(bo.grid_mean), np.copy(grid.grid))
         )
         y = grid[x_next]
-
     ani = HeatmapAnimation(saved_posterior_means)
     ani.visualize()

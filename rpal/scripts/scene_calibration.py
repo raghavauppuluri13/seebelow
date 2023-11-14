@@ -7,8 +7,8 @@ import open3d as o3d
 import argparse
 import datetime
 
-from utils_3d import crop_pcd, visualize_pcds, get_centered_bbox
-from utils_math import (
+from rpal.utils.pcd_utils import crop_pcd, visualize_pcds, get_centered_bbox
+from rpal.utils.math_utils import (
     unit,
     get_rot_mat_from_basis,
     three_pts_to_rot_mat,

@@ -3,8 +3,8 @@ import open3d as o3d
 from typing import Type, TypeVar, Tuple
 from functools import cached_property
 
-from rpal.scripts.utils_3d import visualize_pcds
-from rpal.scripts.utils_math import unit, project_axis_to_plane
+from rpal.utils.pcd_utils import visualize_pcds
+from rpal.utils.math_utils import unit, project_axis_to_plane
 
 """
 approximate surface using grid squares
@@ -12,13 +12,53 @@ approximate surface using grid squares
 1. build grid_center_pt to pointset map
 2. build pointset to grid_center_pt map
 
-normalize point
+pt_to_idx point
 3. given new point, query kNN on grid_centers to get closest grid square using map
-4. linearly interpolate within grid square to get normalized point
+4. linearly interpolate within grid square to get pt_to_idxd point
 
-unnormalize point
-1. linearly interpolate within grid square to get unnormalized point
+idx_to_pt
+1. linearly interpolate within grid square to get unpt_to_idxd point
 """
+
+
+class Grid:
+    def __init__(self):
+        self.grid = None
+
+    @cached_property
+    def vectorized_states(self):
+        nx, ny = self.shape
+        gx = np.arange(0, self.grid.shape[0])
+        gy = np.arange(0, self.grid.shape[1])
+        Xx, Xy = np.meshgrid(gx, gy)
+
+        states = np.array([Xx.reshape(-1), Xy.reshape(-1)]).transpose()
+        states = states[:, np.newaxis, :]
+        return states
+
+    def __getitem__(self, index):
+        r, c = index
+        return self.grid[r, c]
+
+    def sample_states_uniform(self):
+        state = self.vectorized_states[np.random.randint(0, vectorized_states.shape[0])]
+        return list(state.flatten())
+
+
+class GridMap2D(Grid):
+    def __init__(self, r, c, grid_size=0.001):
+        self._r = r
+        self._c = c
+        self._grid_size = grid_size
+        self.grid = np.zeros((self._r, self._c))
+
+    @property
+    def shape(self):
+        return (self._r, self._c)
+
+    @property
+    def grid_size(self):
+        return self._grid_size
 
 
 class Idx2D:
@@ -39,48 +79,6 @@ class Idx2D:
         return (self._x, self._y)
 
 
-class Grid:
-    def __init__(self):
-        self._grid = None
-
-    @cached_property
-    def vectorized_states(self):
-        nx, ny = self.shape
-        nx, ny = (10, 10)
-        gx = np.arange(0, self._grid.shape[0])
-        gy = np.arange(0, self._grid.shape[1])
-        Xx, Xy = np.meshgrid(gx, gy)
-
-        states = np.array([Xx.reshape(-1), Xy.reshape(-1)]).transpose()
-        states = states[:, np.newaxis, :]
-        return states
-
-    def __getitem__(self, index):
-        r, c = index
-        return self._grid[r, c]
-
-    def sample_states_uniform(self):
-        vectorized_states = self.vectorized_states
-        state = vectorized_states[np.random.randint(0, vectorized_states.shape[0])]
-        return list(state.flatten())
-
-
-class GridMap2D(Grid):
-    def __init__(self, r, c, grid_size=0.001):
-        self._r = r
-        self._c = c
-        self._grid_size = grid_size
-        self._grid = np.zeros((self._r, self._c))
-
-    @property
-    def shape(self):
-        return (self._r, self._c)
-
-    @property
-    def grid_size(self):
-        return self._grid_size
-
-
 class SurfaceGridMap(Grid):
     def __init__(self, pcd, grid_size=0.001, nn=10):
         self._grid_size = grid_size
@@ -88,7 +86,7 @@ class SurfaceGridMap(Grid):
 
         self._pcd = pcd
         self._pcd.estimate_normals()
-        self._pcd.normalize_normals()
+        self._pcd.pt_to_idx_normals()
         self._pcd.orient_normals_consistent_tangent_plane(k=100)
 
         verts = np.asarray(self._pcd.points)
@@ -180,7 +178,7 @@ class SurfaceGridMap(Grid):
 
         idxs = np.asarray(list(self.grid_idx2cell_idx.keys()))
         self._grid_shape = list(np.max(idxs, axis=0))
-        self._grid = np.zeros(self._grid_shape)
+        self.grid = np.zeros(self._grid_shape)
 
         self._grid_arr = np.zeros((len(self.grid_idx2cell_idx), 3))
         # populate grid pcd
@@ -188,16 +186,20 @@ class SurfaceGridMap(Grid):
             self._grid_arr[idx] = self._cells[idx][-1]  # add root point
         self._grid_pcd = o3d.geometry.PointCloud()
         self._grid_pcd.points = o3d.utility.Vector3dVector(self._grid_arr)
+        self._grid_pcd.estimate_normals()
         self._grid_pcd_tree = o3d.geometry.KDTreeFlann(self._grid_pcd)
 
-    def normalize(self, point):
+    def pt_to_idx(self, pt):
         num_neighbors, inds, dists = self._grid_pcd_tree.search_knn_vector_3d(pt, 1)
         assert len(inds) == 1
         return self.cell_idx2grid_idx[inds[0]]
 
-    def unnormalize(self, idx):
+    def idx_to_pt(self, idx):
         assert isinstance(idx, tuple)
-        return self.grid_idx2cell_idx[idx]
+        cell_idx = self.grid_idx2cell_idx[idx]
+        norm = self._grid_pcd.normals[cell_idx]
+        pt = self._grid_pcd.points[cell_idx]
+        return (pt, norm)
 
     def visualize(self, show_tf=False):
         tfs = []

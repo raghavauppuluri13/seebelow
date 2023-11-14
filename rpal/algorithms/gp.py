@@ -35,6 +35,7 @@ class GP:
         self.y = []
 
     def add_sample(self, x: Tuple[float, float], y: float):
+        assert isinstance(y, float)
         self.X.append(x)
         self.y.append(y)
 

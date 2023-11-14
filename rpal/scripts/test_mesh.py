@@ -10,9 +10,9 @@ import pinocchio as pin
 
 
 from interpolator import Interpolator, InterpType
-from utils_3d import visualize_pcds
-from utils_tf import pose2mat
-from utils_math import unit
+from rpal.utils.pcd_utils import visualize_pcds
+from rpal.utils.transform_utils import pose2mat
+from rpal.utils.math_utils import unit
 
 
 parser = argparse.ArgumentParser(description="Time-series Heatmap Generator")
