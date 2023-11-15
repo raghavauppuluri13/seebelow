@@ -8,9 +8,8 @@ from scipy.spatial.transform import Rotation
 
 import pinocchio as pin
 
-
-from interpolator import Interpolator, InterpType
-from utils import visualize_pcds, pose2mat
+from rpal.utils.pcd_utils import visualize_pcds
+from rpal.utils.transform_utils import pose2mat
 
 quat_gt = np.array([0, -0.7071068, 0, 0.7071068])
 pos_gt = np.array([0.56616064, 0.12552764, 0.0545865 - 0.009845])

@@ -12,8 +12,9 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
 open3d-cpu = "^0.17.0"
-numpy = "^1.26.1"
+numpy = "1.24"
 imgui = {extras = ["full"], version = "^2.0.0"}
+pin = "2.6.20"
 
 
 

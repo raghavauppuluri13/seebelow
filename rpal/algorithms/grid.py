@@ -41,7 +41,8 @@ class Grid:
         return self.grid[r, c]
 
     def sample_states_uniform(self):
-        state = self.vectorized_states[np.random.randint(0, vectorized_states.shape[0])]
+        vectorized_states = self.vectorized_states
+        state = vectorized_states[np.random.randint(0, vectorized_states.shape[0])]
         return list(state.flatten())
 
 

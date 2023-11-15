@@ -1,6 +1,9 @@
 """
 Copyright 2022 Yifeng Zhu, quat2mat, pose2mat from https://github.com/UT-Austin-RPL/deoxys_control/blob/main/deoxys/deoxys/utils/transform_utils.py
 """
+import numpy as np
+import math
+
 EPS = np.finfo(float).eps * 4.0
 
 

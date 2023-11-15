@@ -9,7 +9,7 @@ from scipy.ndimage import gaussian_filter
 
 class BayesianOptimization:
     def __init__(self, grid: Grid, kernel):
-        self.gp = GP()
+        self.gp = GP(kernel)
         self.grid = grid
         self.grid_mean = np.zeros(grid.shape)
         self.y_max = None
@@ -77,7 +77,7 @@ def add_spots(grid_size, num_spots, spot_intensity, variance):
 if __name__ == "__main__":
     grid_size = (20, 20)
     grid = GridMap2D(*grid_size)
-    spots = add_spots(grid_size, 1, 10, 1.0)
+    spots = add_spots(grid_size, 2, 10, 1.0)
     grid.grid = spots
     # grid.grid += np.random.normal(0, 0.01, grid_size)
     # grid.grid[grid.grid < 0] = 0
