@@ -9,6 +9,21 @@ from rpal.algorithms.active_area_search import ActiveAreaSearch
 from rpal.algorithms.bayesian_optimization import BayesianOptimization
 
 
+class GridVisualizer:
+    def __init__(self):
+        self.buffer = []
+
+    def visualize(self, save=False):
+        ani = HeatmapAnimation(self.buffer)
+        if save:
+            ani.save_animation()
+        else:
+            ani.visualize()
+
+    def add(self, grid):
+        self.buffer.append(grid)
+
+
 class RandomSearch:
     def __init__(self, pcd):
         self.pcd = pcd
@@ -35,6 +50,7 @@ class ActiveSearch:
         self.kernel = SquaredExpKernel(scale=kwargs["scale"])
         self.prev_pt = None
         self.prev_value = None
+        self.algo = None
 
         if algo is ActiveSearchAlgos.AAS:
             qt_dim = max(self.grid.shape)
@@ -45,7 +61,7 @@ class ActiveSearch:
                 self.grid, self.group_quadtree, kernel, **kwargs
             )
         elif algo is ActiveSearchAlgos.BO:
-            bo = BayesianOptimization(grid, kernel)
+            self.algo = BayesianOptimization(grid, kernel)
         else:
             raise RuntimeError("Invalid algo!")
 

@@ -77,7 +77,7 @@ def add_spots(grid_size, num_spots, spot_intensity, variance):
 if __name__ == "__main__":
     grid_size = (20, 20)
     grid = GridMap2D(*grid_size)
-    spots = add_spots(grid_size, 2, 10, 1.0)
+    spots = add_spots(grid_size, 1, 10, 3.0)
     grid.grid = spots
     # grid.grid += np.random.normal(0, 0.01, grid_size)
     # grid.grid[grid.grid < 0] = 0

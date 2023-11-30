@@ -22,25 +22,64 @@ from rpal.utils.devices import ForceSensor
 from rpal.utils.data_utils import DatasetWriter, Hz
 from rpal.utils.math_utils import unit, three_pts_to_rot_mat
 from rpal.utils.pcd_utils import surface_mesh_to_pcd
-from rpal.utils.sensor_utils import RingBuffer
+from rpal.utils.proc_utils import RingBuffer
+from rpal.utils.control_utils import generate_joint_space_min_jerk
 from rpal.utils.useful_poses import O_T_CAM, O_xaxis
 from rpal.utils.interpolator import Interpolator, InterpType
-
+from rpal.utils.constants import SIMPLE_TEST_BBOX_PHANTOM_HEMISPHERE, RPAL_PKG_PATH
 from rpal.algorithms.search import RandomSearch, ActiveSearch, ActiveSearchAlgos
 
 from pinocchio.rpy import matrixToRpy, rpyToMatrix
 
 import pinocchio as pin
 
-
 import numpy as np
-
 
 logger = get_deoxys_example_logger()
 SAMPLE_RATE = 30  # hz
+PHANTOM_MESH_PATH = str(RPAL_PKG_PATH / "meshes" / "phantom_mesh.ply")
 RPAL_HYBRID_POSITION_FORCE = "RPAL_HYBRID_POSITION_FORCE"
 np.random.seed(100)
+Frms_LIMIT = 5.0
+PALP_WRENCH_MAG = 5  # N
+BUFFER_SIZE = 100
+FORCE_BUFFER_STABILITY_THRESHOLD = 0.05  # N
+POS_BUFFER_STABILITY_THRESHOLD = 0.005  # m
+ABOVE_HEIGHT = 0.02
+PALPATE_DEPTH = 0.035
 
+sample_time = time.perf_counter()
+goals = deque([O_T_CAM])
+palp_state = PalpateState()
+curr_pose_se3 = pin.SE3.Identity()
+subsurface_pts = []
+subsurface_pt = None
+max_dist = -np.inf
+using_force_control = False
+wrench_goal = None
+start_data_collection = False
+force_buffer = RingBuffer(BUFFER_SIZE, FORCE_BUFFER_STABILITY_THRESHOLD)
+pos_buffer = RingBuffer(BUFFER_SIZE, POS_BUFFER_STABILITY_THRESHOLD)
+robot_interface._state_buffer = []
+init_eef_pose = None
+curr_eef_pose = None
+prev_pt = None
+prev_norm = None
+FORCE = None
+panda_force = None
+STEP_FAST = 100
+STEP_SLOW = 2000
+Frms = 0.0
+Fxyz = 0.0
+max_stiffness = -np.inf
+palp_pt = None
+CTRL_FREQ = 100
+force_osc_out = generate_joint_space_min_jerk(np.zeros(2), np.full(2,10),2,1/CTRL_FREQ)
+force_osc_in = generate_joint_space_min_jerk(np.full(2,10),np.zeros(2), 2,1/CTRL_FREQ)
+
+force_osc = force_osc_out + force_osc_in
+
+assert False, print(force_osc)
 
 class PalpateState:
     ABOVE = 0
@@ -78,42 +117,10 @@ if __name__ == "__main__":
     dataset_writer = DatasetWriter(args, record_pcd=False, print_hz=False)
     interp = Interpolator(interp_type=InterpType.SE3)
 
-    surface_pcd_cropped = surface_mesh_to_pcd("./phantom_mesh.ply")
+    surface_pcd_cropped = surface_mesh_to_pcd(PHANTOM_MESH_PATH)
     search = RandomSearch(surface_pcd_cropped)
-    search.grid.visualize()
-    # search = ActiveSearch(phantom_pcd, ActiveSearchAlgos.BO)
-
-    Frms_LIMIT = 5.0
-    PALP_WRENCH_MAG = 5  # N
-    BUFFER_SIZE = 100
-    BUFFER_STABILITY_THRESHOLD = 0.05
-    ABOVE_HEIGHT = 0.02
-    PALPATE_DEPTH = 0.035
-
-    sample_time = time.perf_counter()
-    goals = deque([O_T_CAM])
-    palp_state = PalpateState()
-    curr_pose_se3 = pin.SE3.Identity()
-    subsurface_pts = []
-    subsurface_pt = None
-    max_dist = -np.inf
-    using_force_control = False
-    wrench_goal = None
-    start_data_collection = False
-    force_buffer = RingBuffer(BUFFER_SIZE, BUFFER_STABILITY_THRESHOLD)
-    robot_interface._state_buffer = []
-    init_eef_pose = None
-    curr_eef_pose = None
-    prev_pt = None
-    prev_norm = None
-    FORCE = None
-    panda_force = None
-    STEP_FAST = 100
-    STEP_SLOW = 2000
-    Frms = 0.0
-    Fxyz = 0.0
-    max_stiffness = -np.inf
-    palp_pt = None
+    # search.grid.visualize()
+    search = ActiveSearch(phantom_pcd, ActiveSearchAlgos.BO)
 
     def palpate(pos, O_surf_norm_unit=np.array([0, 0, 1])):
         O_zaxis = np.array([[0, 0, 1]])
@@ -157,6 +164,7 @@ if __name__ == "__main__":
         curr_pose_se3.translation = curr_eef_pose[1]
         pose_goal = goals.pop()
         interp.init(curr_pose_se3, pose_goal, steps=STEP_FAST)
+        i = 0
         while True:
             curr_eef_pose = robot_interface.last_eef_rot_and_pos
             curr_pose_se3.rotation = curr_eef_pose[0]
@@ -179,8 +187,12 @@ if __name__ == "__main__":
                 Frms = np.sqrt(np.sum(Fxyz**2))
 
             force_buffer.append(Frms)
+            pos_buffer.append(np.linalg.norm(palp_pt - curr_pose_se3.translation))
 
-            if using_force_control and force_buffer.is_stable:
+            if force_buffer.overflowed():
+                running_stats.update(force_buffer.buffer)
+
+            if using_force_control and force_buffer.is_stable and pos_buffer.is_stable:
                 print("FORCE STABLE!")
                 start_data_collection = False
                 using_force_control = False
@@ -199,7 +211,7 @@ if __name__ == "__main__":
                 assert palp_pt is not None
                 stiffness = Frms / np.linalg.norm(palp_pt - curr_pose_se3.translation)
                 max_stiffness = max(stiffness, max_stiffness)
-                # search.update_outcome(palp_pt, max_stiffness)
+                search.update_outcome(palp_pt, max_stiffness)
 
                 if Frms > Frms_LIMIT and not using_force_control:
                     using_force_control = True
@@ -216,6 +228,7 @@ if __name__ == "__main__":
                 print("Using force control!")
                 action = np.zeros(9)
                 assert wrench_goal is not None
+                wrench_goal = rot_about_orthogonal_axes(wrench_goal, 10,10)
                 action[-3:] = wrench_goal
                 robot_interface.control(
                     controller_type=RPAL_HYBRID_POSITION_FORCE,
@@ -238,7 +251,7 @@ if __name__ == "__main__":
                     action=action,
                     controller_cfg=controller_cfg,
                 )
-
+            i = (i + 1) % CTRL_FREQ
             end_time = time.perf_counter()
             # print(f"Time duration: {((end_time - start_time) / (10**9))}")
     except KeyboardInterrupt:

@@ -42,6 +42,7 @@ def three_pts_to_rot_mat(p1, p2, p3, neg_x=False):
 
 
 def project_axis_to_plane(plane_normal, axis_to_project):
+    plane_normal = unit(plane_normal)
     axis_to_project /= np.linalg.norm(axis_to_project)
     proj_to_plane_from_axis = (
         np.dot(plane_normal, axis_to_project)
@@ -49,3 +50,37 @@ def project_axis_to_plane(plane_normal, axis_to_project):
         * plane_normal
     )
     return unit(axis_to_project - proj_to_plane_from_axis)
+
+
+def rot_about_orthogonal_axes(v, theta_deg, phi_deg):
+    def skew_symmetric(v):
+        return np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+
+    def rodrigues_rotation_matrix(axis, angle):
+        axis = unit(axis)  # Ensure it's a unit vector
+        K = skew_symmetric(axis)
+        angle_rad = np.radians(angle)
+        R = np.eye(3) + np.sin(angle_rad) * K + (1 - np.cos(angle_rad)) * (K @ K)
+        return R
+
+    # axes
+    a = np.array([1, 0, 0], dtype=np.float64)
+    b = np.array([0, 1, 0], dtype=np.float64)
+    a = project_axis_to_plane(v, a)
+    b = np.cross(v, a)
+
+    # Compute rotation matrices
+    R_a = rodrigues_rotation_matrix(a, theta_deg)
+    R_b = rodrigues_rotation_matrix(b, phi_deg)
+
+    # Combined rotation
+    R = R_b @ R_a  # Order depends on which rotation you want to apply first
+
+    return R
+
+
+if __name__ == "__main__":
+    assert np.allclose(
+        rot_about_orthogonal_axes(np.random.rand(3).astype(np.float64), 0, 0),
+        np.eye(3),
+    )

@@ -13,9 +13,6 @@ from rpal.algorithms.grid import SurfaceGridMap
 from collections import defaultdict
 from rpal.algorithms.quadtree import QuadTree
 
-import torch
-import torch.distributions as dist
-
 
 class ActiveAreaSearch:
     state_dim = 2

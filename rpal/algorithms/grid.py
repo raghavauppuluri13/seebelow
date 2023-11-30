@@ -45,6 +45,14 @@ class Grid:
         state = vectorized_states[np.random.randint(0, vectorized_states.shape[0])]
         return list(state.flatten())
 
+    @property
+    def shape(self):
+        raise NotImplementedError()
+
+    @property
+    def grid_size(self):
+        raise NotImplementedError()
+
 
 class GridMap2D(Grid):
     def __init__(self, r, c, grid_size=0.001):
@@ -60,24 +68,6 @@ class GridMap2D(Grid):
     @property
     def grid_size(self):
         return self._grid_size
-
-
-class Idx2D:
-    T = TypeVar("T", bound="Idx2D")
-
-    def __init__(self, x, y):
-        self._x = x
-        self._y = y
-
-    def iter(self, dx, dy) -> T:
-        x = self._x + dx
-        y = self._y + dy
-        assert x >= 0 or y >= 0
-        return Idx2D(x, y)
-
-    @property
-    def idx(self) -> Tuple[float, float]:
-        return (self._x, self._y)
 
 
 class SurfaceGridMap(Grid):
@@ -125,8 +115,18 @@ class SurfaceGridMap(Grid):
         self._T[:3, 3] = origin
 
         # use surface bounding box to stop grid expansion
-        self._bbox = self._pcd.get_oriented_bounding_box()
-        self._bbox.scale(2, center=vert_center)
+        max_p = verts.max(axis=0) + 0.001
+        min_p = verts.min(axis=0) - 0.001
+
+        bbox_pts = []
+        for x in [min_p[0], max_p[0]]:
+            for y in [min_p[1], max_p[1]]:
+                for z in [min_p[2], max_p[2]]:
+                    bbox_pts.append(np.array([x, y, z]))
+        bbox_pts = np.array(bbox_pts)
+        self._bbox = o3d.geometry.OrientedBoundingBox.create_from_points(
+                    o3d.utility.Vector3dVector(bbox_pts)
+                )
         self._bbox.color = [1, 0, 0]
 
         # cells are defined by their center point, normal vector, and xyz axes
@@ -135,8 +135,8 @@ class SurfaceGridMap(Grid):
         self.grid_idx2cell_idx = {}
         self.cell_idx2grid_idx = {}
 
-        def build_grid(cell_center, grid_idx=Idx2D(0, 0)):
-            if grid_idx.idx in self.grid_idx2cell_idx:
+        def build_grid(cell_center, grid_idx=(0, 0)):
+            if grid_idx in self.grid_idx2cell_idx:
                 return 0
 
             inds = self._bbox.get_point_indices_within_bounding_box(
@@ -160,18 +160,21 @@ class SurfaceGridMap(Grid):
                 xaxis_cell = project_axis_to_plane(grid_normal, xaxis_origin)
                 yaxis_cell = np.cross(grid_normal, xaxis_cell)
 
-                new_cell_center_dx = cell_center + xaxis_cell * self._grid_size
-                new_cell_center_dy = cell_center + yaxis_cell * self._grid_size
+                new_cell_idx_center_dx = cell_center + xaxis_cell * self._grid_size
+                new_cell_idx_center_dy = cell_center + yaxis_cell * self._grid_size
 
                 self._cells.append((xaxis_cell, yaxis_cell, grid_normal, cell_center))
 
                 cell_idx = len(self._cells) - 1
-                self.grid_idx2cell_idx[grid_idx.idx] = cell_idx
-                self.cell_idx2grid_idx[cell_idx] = grid_idx.idx
+                self.grid_idx2cell_idx[grid_idx] = cell_idx
+                self.cell_idx2grid_idx[cell_idx] = grid_idx
 
-                return build_grid(new_cell_center_dx, grid_idx.iter(1, 0)) + build_grid(
-                    new_cell_center_dy, grid_idx.iter(0, 1)
-                )
+                new_cell_idx_in_x = (grid_idx[0] + 1, grid_idx[1] + 0)
+                new_cell_idx_in_y = (grid_idx[0] + 0, grid_idx[1] + 1)
+
+                return build_grid(
+                    new_cell_idx_center_dx, new_cell_idx_in_x
+                ) + build_grid(new_cell_idx_center_dy, new_cell_idx_in_y)
             else:
                 return 0
 
@@ -206,7 +209,7 @@ class SurfaceGridMap(Grid):
         tfs = []
         if show_tf:
             cluster_colors = np.random.rand(len(self._grid_pcd.points), 3)
-            for grid, idx in self.grid_idx2cell_grid.items():
+            for grid, idx in self.grid_idx2cell_idx.items():
                 xaxis, yaxis, zaxis, cell_center = self._cells[idx]
                 # Create array of all possible combinations of 0 and 1 for x, y, and z
                 corners = np.array(np.meshgrid([0, 1], [0, 1], [0, 1])).T.reshape(-1, 3)
@@ -221,7 +224,8 @@ class SurfaceGridMap(Grid):
                 )
                 grid_T[:3, 3] = cell_center
                 tfs.append(grid_T)
-        visualize_pcds([self._grid_pcd, self._bbox], tfs=tfs)
+        self._pcd.paint_uniform_color([1,0,0])
+        visualize_pcds([self._grid_pcd, self._pcd, self._bbox], tfs=tfs)
 
     @property
     def shape(self):

@@ -5,6 +5,7 @@ import time
 import math
 import queue
 import threading
+from pathlib import Path
 
 
 class Hz:
@@ -85,6 +86,7 @@ class DatasetWriter:
         self.reconstruction_file = self.dataset_folder / "reconstruction.ply"
         self.reconstruction_raw = self.dataset_folder / "reconstruction.txt"
         self.surface_pcd = self.dataset_folder / "surface.ply"
+        self.search_anim = self.dataset_folder / "search_animation.mp4"
         os.mkdir(self.dataset_folder)
 
         if self.record_pcd:
