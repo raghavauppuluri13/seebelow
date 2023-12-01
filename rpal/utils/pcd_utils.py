@@ -23,7 +23,6 @@ def animate_point_cloud(pcd, other_geoms=[]):
         ctr.rotate(2.0, 2.0)  # Adjust rotation speed by changing these values
         return False
 
-
     # Calculate the mean point (center) of the point cloud
     vis = o3d.visualization.VisualizerWithKeyCallback()
     vis.register_animation_callback(rotate_view)
@@ -35,7 +34,7 @@ def animate_point_cloud(pcd, other_geoms=[]):
     vis.destroy_window()
 
 
-def surface_mesh_to_pcd(mesh_path):
+def surface_mesh_to_pcd(mesh_path, bbox_pts=None):
     surface_mesh = o3d.io.read_triangle_mesh(mesh_path)
     surface_mesh = surface_mesh.subdivide_midpoint(number_of_iterations=2)
     surface_mesh.compute_vertex_normals()
@@ -44,13 +43,14 @@ def surface_mesh_to_pcd(mesh_path):
     surface_pcd = o3d.geometry.PointCloud()
     surface_pcd.points = o3d.utility.Vector3dVector(np.asarray(surface_mesh.vertices))
 
-    bbox = pick_surface_bbox(surface_pcd)
+    bbox = pick_surface_bbox(surface_pcd, bbox_pts=bbox_pts)
 
     surface_pcd.estimate_normals()
     surface_pcd.normalize_normals()
     surface_pcd.orient_normals_consistent_tangent_plane(k=100)
     surface_pcd = surface_pcd.crop(bbox)
     return surface_pcd
+
 
 def box_center_to_corner(box_center):
     """https://stackoverflow.com/questions/62938546/how-to-draw-bounding-boxes-and-update-them-real-time-in-python"""
@@ -62,31 +62,47 @@ def box_center_to_corner(box_center):
     rotation = box[6]
 
     # Create a bounding box outline
-    bounding_box = np.array([
-        [-l/2, -l/2, l/2, l/2, -l/2, -l/2, l/2, l/2],
-        [w/2, -w/2, -w/2, w/2, w/2, -w/2, -w/2, w/2],
-        [-h/2, -h/2, -h/2, -h/2, h/2, h/2, h/2, h/2]])
+    bounding_box = np.array(
+        [
+            [-l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2],
+            [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2],
+            [-h / 2, -h / 2, -h / 2, -h / 2, h / 2, h / 2, h / 2, h / 2],
+        ]
+    )
 
     # Standard 3x3 rotation matrix around the Z axis
-    rotation_matrix = np.array([
-        [np.cos(rotation), -np.sin(rotation), 0.0],
-        [np.sin(rotation), np.cos(rotation), 0.0],
-        [0.0, 0.0, 1.0]])
+    rotation_matrix = np.array(
+        [
+            [np.cos(rotation), -np.sin(rotation), 0.0],
+            [np.sin(rotation), np.cos(rotation), 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
 
     # Repeat the [x, y, z] eight times
     eight_points = np.tile(translation, (8, 1))
 
     # Translate the rotated bounding box by the
     # original center position to obtain the final box
-    corner_box = np.dot(
-        rotation_matrix, bounding_box) + eight_points.transpose()
+    corner_box = np.dot(rotation_matrix, bounding_box) + eight_points.transpose()
 
     corner_box = corner_box.transpose()
 
     # Our lines span from points 0 to 1, 1 to 2, 2 to 3, etc...
-    lines = [[0, 1], [1, 2], [2, 3], [0, 3],
-             [4, 5], [5, 6], [6, 7], [4, 7],
-             [0, 4], [1, 5], [2, 6], [3, 7]]
+    lines = [
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [0, 3],
+        [4, 5],
+        [5, 6],
+        [6, 7],
+        [4, 7],
+        [0, 4],
+        [1, 5],
+        [2, 6],
+        [3, 7],
+    ]
 
     # Use the same color for all lines
     colors = [[1, 0, 0] for _ in range(len(lines))]
@@ -97,6 +113,7 @@ def box_center_to_corner(box_center):
     line_set.colors = o3d.utility.Vector3dVector(colors)
 
     return line_set
+
 
 def pick_surface_bbox(pcd, bbox_pts=None):
     if bbox_pts is None:

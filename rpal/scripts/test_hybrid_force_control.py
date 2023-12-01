@@ -11,41 +11,22 @@ from deoxys.utils.input_utils import input2action
 from deoxys.utils import YamlConfig
 from deoxys.utils.io_devices import SpaceMouse
 from deoxys.utils.log_utils import get_deoxys_example_logger
+from rpal.utils.math_utils import rot_about_orthogonal_axes
+from rpal.utils.control_utils import generate_joint_space_min_jerk
+
 
 logger = get_deoxys_example_logger()
 
+total_time = 2
+CTRL_FREQ = 100
+mag = 4
+ANGLE = 35
 
-def get_rotated_vector(angle):
-    theta = np.radians(angle)
-
-    # Rotation matrix for rotating around x-axis
-    rot_x = np.array(
-        [
-            [1, 0, 0],
-            [0, np.cos(theta), -np.sin(theta)],
-            [0, np.sin(theta), np.cos(theta)],
-        ]
-    )
-
-    rot_y = np.array(
-        [
-            [np.cos(theta), 0, np.sin(theta)],
-            [0, 1, 0],
-            [-np.sin(theta), 0, np.cos(theta)],
-        ]
-    )
-
-    # Unit vector in z-axis
-    z_unit = np.array([0, 0, -1])
-
-    # Apply rotation to z_unit
-    z_rotated = np.dot(rot_y, z_unit)
-
-    # Normalize the resulting vector to get the unit vector
-    z_unit_rotated = z_rotated / np.linalg.norm(z_rotated)
-
-    return z_unit_rotated
-
+start = np.zeros(2)
+end = np.full(2, ANGLE)
+force_osc_out = generate_joint_space_min_jerk(start, end, total_time / 2, 1 / CTRL_FREQ)
+force_osc_in = generate_joint_space_min_jerk(end, start, total_time / 2, 1 / CTRL_FREQ)
+force_osc = force_osc_out + force_osc_in
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -60,7 +41,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     robot_interface = FrankaInterface(
-        args.interface_cfg, use_visualizer=False, control_freq=100
+        args.interface_cfg, use_visualizer=False, control_freq=CTRL_FREQ
     )
 
     controller_type = args.controller_type
@@ -71,13 +52,22 @@ if __name__ == "__main__":
     robot_interface._state_buffer = []
 
     action = np.zeros(9)
-    z_rot_15_deg = 2 * get_rotated_vector(30)
-    z = 7 * np.array([0, 0, -1])
-    action[-3:] = z
+    z_unit = np.array([0, 0, -1])
+
+    start_time = time.time()
 
     try:
         while True:
-            print("action: ", action)
+            if time.time() - start_time > total_time:
+                start_time = time.time()
+
+            force_idx = int((time.time() - start_time) / (1 / CTRL_FREQ))
+            theta_phi = force_osc[force_idx]["position"]
+            R = rot_about_orthogonal_axes(z_unit, theta_phi[0], theta_phi[1])
+            wrench = R @ z_unit
+            assert np.isclose(np.linalg.norm(wrench), 1)
+            print("wrench: ", wrench)
+            action[-3:] = mag * wrench
             robot_interface.control(
                 controller_type=controller_type,
                 action=action,
