@@ -51,3 +51,52 @@ def pose2mat(pos_quat):
     homo_pose_mat[:3, 3] = np.array(pos_quat[:3], dtype=np.float32)
     homo_pose_mat[3, 3] = 1.0
     return homo_pose_mat
+
+
+def mat2euler(rmat, axes="sxyz"):
+    """
+    Converts given rotation matrix to euler angles in radian.
+
+    Args:
+        rmat (np.array): 3x3 rotation matrix
+        axes (str): One of 24 axis sequences as string or encoded tuple (see top of this module)
+
+    Returns:
+        np.array: (r,p,y) converted euler angles in radian vec3 float
+    """
+    try:
+        firstaxis, parity, repetition, frame = _AXES2TUPLE[axes.lower()]
+    except (AttributeError, KeyError):
+        firstaxis, parity, repetition, frame = axes
+
+    i = firstaxis
+    j = _NEXT_AXIS[i + parity]
+    k = _NEXT_AXIS[i - parity + 1]
+
+    M = np.array(rmat, dtype=np.float32, copy=False)[:3, :3]
+    if repetition:
+        sy = math.sqrt(M[i, j] * M[i, j] + M[i, k] * M[i, k])
+        if sy > EPS:
+            ax = math.atan2(M[i, j], M[i, k])
+            ay = math.atan2(sy, M[i, i])
+            az = math.atan2(M[j, i], -M[k, i])
+        else:
+            ax = math.atan2(-M[j, k], M[j, j])
+            ay = math.atan2(sy, M[i, i])
+            az = 0.0
+    else:
+        cy = math.sqrt(M[i, i] * M[i, i] + M[j, i] * M[j, i])
+        if cy > EPS:
+            ax = math.atan2(M[k, j], M[k, k])
+            ay = math.atan2(-M[k, i], cy)
+            az = math.atan2(M[j, i], M[i, i])
+        else:
+            ax = math.atan2(-M[j, k], M[j, j])
+            ay = math.atan2(-M[k, i], cy)
+            az = 0.0
+
+    if parity:
+        ax, ay, az = -ax, -ay, -az
+    if frame:
+        ax, az = az, ax
+    return vec((ax, ay, az))

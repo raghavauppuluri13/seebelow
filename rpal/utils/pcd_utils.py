@@ -42,6 +42,9 @@ def surface_mesh_to_pcd(mesh_path, bbox_pts=None):
 
     surface_pcd = o3d.geometry.PointCloud()
     surface_pcd.points = o3d.utility.Vector3dVector(np.asarray(surface_mesh.vertices))
+    surface_pcd.colors = o3d.utility.Vector3dVector(
+        np.asarray(surface_mesh.vertex_colors)
+    )
 
     bbox = pick_surface_bbox(surface_pcd, bbox_pts=bbox_pts)
 

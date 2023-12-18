@@ -1,5 +1,4 @@
 controller_type: OSC_POSE
-
 is_delta: false
 
 traj_interpolator_cfg:
@@ -17,9 +16,9 @@ action_scale:
 residual_mass_vec: [0.0, 0.0, 0.0, 0.0, 0.1, 0.3, 0.3]
 
 state_estimator_cfg:
-  is_estimation: false
+  is_estimation: true
   state_estimator_type: EXPONENTIAL_SMOOTHING
   alpha_q: 0.9
   alpha_dq: 0.9
-  alpha_eef: 1.0
+  alpha_eef: 0.9
   alpha_eef_vel: 1.0

@@ -67,11 +67,9 @@ def uniform_sampling_1d(min_pose, max_pose):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--interface-cfg", type=str, default="./an-an-force.yml")
+    parser.add_argument("--interface-cfg", type=str, default="an-an-force.yml")
     parser.add_argument("--controller-type", type=str, default="OSC_POSE")
-    parser.add_argument(
-        "--controller-cfg", type=str, default="./osc-pose-controller.yml"
-    )
+    parser.add_argument("--controller-cfg", type=str, default="osc-pose-controller.yml")
     parser.add_argument("--vendor-id", type=int, default=9583)
     parser.add_argument("--product-id", type=int, default=50734)
 
@@ -79,7 +77,9 @@ if __name__ == "__main__":
 
     force_cap = ForceSensor()
 
-    robot_interface = FrankaInterface(args.interface_cfg, use_visualizer=False)
+    robot_interface = FrankaInterface(
+        str(RPAL_CFG_PATH / args.interface_cfg), use_visualizer=False
+    )
 
     dataset_writer = DatasetWriter(args, record_pcd=False, print_hz=False)
 

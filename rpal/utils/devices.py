@@ -41,9 +41,11 @@ class RealsenseCapture:
         im_rgbd = self.rs.capture_frame(True, True)  # wait for frames and align them
         pcd = o3d.t.geometry.PointCloud.create_from_rgbd_image(
             im_rgbd, self.intrinsics
-        ).to_legacy_pointcloud()
+        ).to_legacy()
 
-        return pcd
+        im = np.asarray(im_rgbd.color.to_legacy())
+
+        return im, pcd
 
 
 class ForceSensor:

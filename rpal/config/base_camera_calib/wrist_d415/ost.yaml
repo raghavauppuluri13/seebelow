@@ -1,0 +1,9 @@
+image_width: 848
+image_height: 480
+camera_name: wrist_d415 
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [607.40893555, 0., 425.79382324,  
+         0, 606.47180176, 239.47114563,
+         0, 0., 1.]

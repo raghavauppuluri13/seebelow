@@ -97,7 +97,7 @@ start_time = None
 oscill_start_time = None
 T_oscill = 2  # oscillation period (s)
 CTRL_FREQ = 100
-ANGLE = 35  # deg
+ANGLE = 10  # deg
 start_angles = np.zeros(2)  # theta, phi
 end_angles = np.full(2, ANGLE)
 force_oscill_out = generate_joint_space_min_jerk(
@@ -129,9 +129,7 @@ if __name__ == "__main__":
     dataset_writer = DatasetWriter(args, record_pcd=False, print_hz=False)
     interp = Interpolator(interp_type=InterpType.SE3)
 
-    surface_pcd_cropped = surface_mesh_to_pcd(
-        PHANTOM_MESH_PATH, SIMPLE_TEST_BBOX_PHANTOM_HEMISPHERE
-    )
+    surface_pcd_cropped = surface_mesh_to_pcd(PHANTOM_MESH_PATH)
     search = RandomSearch(surface_pcd_cropped)
     # search.grid.visualize()
     # search = ActiveSearch(phantom_pcd, ActiveSearchAlgos.BO)
@@ -251,7 +249,7 @@ if __name__ == "__main__":
                 assert wrench_unit is not None
                 theta_phi = force_oscill_traj[idx]["position"]
                 R = rot_about_orthogonal_axes(wrench_unit, theta_phi[0], theta_phi[1])
-                wrench_unit = R @ wrench_unit
+                # wrench_unit = R @ wrench_unit
                 assert np.isclose(np.linalg.norm(wrench_unit), 1)
                 action[-3:] = PALP_WRENCH_MAG * wrench_unit
                 print("wrench: ", action[-3:])

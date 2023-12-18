@@ -1,0 +1,9 @@
+board:  # The chessboard information
+      nrows: 9  # number of inner grid points on x axis
+      ncols: 6  # number of inner grid points on y axis
+      cell_size: 0.024  # size of a grid cell, must agree with intrinsic unit
+
+init_X_EM: [0,0,0.1, 0,0,0]
+
+camera_names: ["wrist_d415"]
+path_to_intrinsics: "."
