@@ -7,7 +7,6 @@ import os
 import subprocess
 from rpal.utils.devices import RealsenseCapture
 import cv2
-import spdlog
 import argparse
 from io import StringIO
 import yaml
@@ -15,6 +14,7 @@ from pathlib import Path
 from rpal.utils.data_utils import Hz
 from rpal.utils.constants import *
 from rpal.utils.time_utils import Ratekeeper
+from rpal.utils.keystroke_counter import KeyCode, KeystrokeCounter
 from deoxys.franka_interface import FrankaInterface
 import pinocchio as pin
 from deoxys.utils.transform_utils import quat2mat, mat2euler
@@ -27,8 +27,11 @@ from scipy.spatial.transform import Rotation
 import multiprocessing as mp
 from multiprocessing import shared_memory
 import ctypes
+from pynput.keyboard import Key, Listener
 
 INT_SIZE = ctypes.sizeof(ctypes.c_int)
+
+PROPRIO_DIM = 7  # pos: x,y,z, rot: x,y,z,w
 
 
 class CalibrationWriter:
@@ -90,7 +93,7 @@ class CalibrationWriter:
 
 def deoxys_ctrl(shm_posearr_name, stop_event):
     existing_shm = shared_memory.SharedMemory(name=shm_posearr_name)
-    O_T_EE_shm = np.ndarray(6, dtype=np.float32, buffer=existing_shm.buf)
+    O_T_EE_shm = np.ndarray(PROPRIO_DIM, dtype=np.float32, buffer=existing_shm.buf)
     robot_interface = FrankaInterface(
         str(RPAL_CFG_PATH / args.interface_cfg), use_visualizer=False, control_freq=20
     )
@@ -104,9 +107,8 @@ def deoxys_ctrl(shm_posearr_name, stop_event):
 
     while not stop_event.is_set():
         q, p = robot_interface.last_eef_quat_and_pos
-        euler = mat2euler(quat2mat(q))
         O_T_EE[:3] = p.flatten()
-        O_T_EE[3:6] = euler.flatten()
+        O_T_EE[3:7] = q.flatten()
 
         action, grasp = input2action(
             device=device,
@@ -136,7 +138,7 @@ if __name__ == "__main__":
     argparser.add_argument("--interface-cfg", type=str, default="pan-pan-force.yml")
     args = argparser.parse_args()
 
-    O_T_EE = np.zeros(6, dtype=np.float32)
+    O_T_EE = np.zeros(PROPRIO_DIM, dtype=np.float32)
     shm = shared_memory.SharedMemory(create=True, size=O_T_EE.nbytes)
     O_T_EE = np.ndarray(O_T_EE.shape, dtype=O_T_EE.dtype, buffer=shm.buf)
     stop_event = mp.Event()
@@ -153,36 +155,41 @@ if __name__ == "__main__":
     )
     im, pcd = rs.read()
 
-    rk = Ratekeeper(5)
+    rk = Ratekeeper(30)
 
-    try:
-        while 1:
-            if np.all(O_T_EE == 0):
-                print("Waiting for pose...")
-                continue
-            im, new_pcd = rs.read()
-            ret, corners = cv2.findChessboardCorners(
-                im,
-                cb_size,
-                flags=cv2.CALIB_CB_ADAPTIVE_THRESH
-                + cv2.CALIB_CB_FAST_CHECK
-                + cv2.CALIB_CB_NORMALIZE_IMAGE,
-            )
+    with KeystrokeCounter() as key_counter:
+        try:
+            while 1:
+                if np.all(O_T_EE == 0):
+                    print("Waiting for pose...")
+                    continue
+                im, new_pcd = rs.read()
 
-            if ret:
-                print(f"added #{len(calibration_writer.images)} data point")
-                print(f"O_T_EE: {O_T_EE}")
-                calibration_writer.add(im, O_T_EE.copy())
-            else:
-                print(f"nope!")
-            rk.keep_time()
-    except KeyboardInterrupt:
-        pass
-    stop_event.set()
-    ctrl_process.join()
-    print("CTRL STOPPED!")
+                press_events = key_counter.get_press_events()
+                for key_stroke in press_events:
+                    if key_stroke == KeyCode(char="r"):
+                        ret, corners = cv2.findChessboardCorners(
+                            im,
+                            cb_size,
+                            flags=cv2.CALIB_CB_ADAPTIVE_THRESH
+                            + cv2.CALIB_CB_FAST_CHECK
+                            + cv2.CALIB_CB_NORMALIZE_IMAGE,
+                        )
 
-    calibration_writer.write()
+                        if ret:
+                            print(f"added #{len(calibration_writer.images)} data point")
+                            print(f"O_T_EE: {O_T_EE}")
+                            calibration_writer.add(im, O_T_EE.copy())
+                        else:
+                            print(f"nope!")
+                rk.keep_time()
+        except KeyboardInterrupt:
+            pass
+        stop_event.set()
+        ctrl_process.join()
+        print("CTRL STOPPED!")
 
-    shm.close()
-    shm.unlink()
+        calibration_writer.write()
+
+        shm.close()
+        shm.unlink()

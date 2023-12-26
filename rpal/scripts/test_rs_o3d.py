@@ -2,25 +2,30 @@ import open3d as o3d
 
 import numpy as np
 from rpal.utils.devices import RealsenseCapture
+from rpal.utils.constants import *
+from rpal.utils.segmentation_utils import get_hsv_threshold, get_color_mask
 import cv2
 import argparse
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--rgb", type=bool, default=False)
+argparser.add_argument("--tumors-only", type=bool, default=False)
 args = argparser.parse_args()
-
-print(args)
 
 rs = RealsenseCapture()
 
-im, pcd = rs.read()
+im, pcd = rs.read(get_mask=lambda x: get_color_mask(x, TUMOR_HSV_THRESHOLD))
+
 if not args.rgb:
     vis = o3d.visualization.Visualizer()
     vis.create_window()
     vis.add_geometry(pcd)
 
 while 1:  # Set the number of frames to display the image
-    im, new_pcd = rs.read()
+    if args.tumors_only:
+        im, new_pcd = rs.read(get_mask=lambda x: get_color_mask(x, TUMOR_HSV_THRESHOLD))
+    else:
+        im, new_pcd = rs.read()
     if args.rgb:
         cv2.imshow("Image", np.asarray(im))
         cv2.waitKey(1)  # Wait for 1 millisecond

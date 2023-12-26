@@ -58,7 +58,7 @@ SAMPLE_RATE = 30  # hz
 PHANTOM_MESH_PATH = str(RPAL_PKG_PATH / "meshes" / "phantom_mesh.ply")
 RPAL_HYBRID_POSITION_FORCE = "RPAL_HYBRID_POSITION_FORCE"
 np.random.seed(100)
-Frms_LIMIT = 5.0
+F_norm_LIMIT = 5.0
 PALP_WRENCH_MAG = 4  # N
 BUFFER_SIZE = 100
 FORCE_BUFFER_STABILITY_THRESHOLD = 0.05  # N
@@ -87,7 +87,7 @@ FORCE = None
 panda_force = None
 STEP_FAST = 100
 STEP_SLOW = 2000
-Frms = 0.0
+F_norm = 0.0
 Fxyz = 0.0
 max_stiffness = -np.inf
 palp_pt = None
@@ -195,9 +195,9 @@ if __name__ == "__main__":
             Fxyz_temp = force_cap.read()
             if Fxyz_temp is not None:
                 Fxyz = Fxyz_temp
-                Frms = np.sqrt(np.sum(Fxyz**2))
+                F_norm = np.sqrt(np.sum(Fxyz**2))
 
-            force_buffer.append(Frms)
+            force_buffer.append(F_norm)
             if palp_pt is not None:
                 pos_buffer.append(np.linalg.norm(palp_pt - curr_pose_se3.translation))
 
@@ -221,11 +221,11 @@ if __name__ == "__main__":
 
             if palp_state.state == PalpateState.PALPATE:
                 assert palp_pt is not None
-                stiffness = Frms / np.linalg.norm(palp_pt - curr_pose_se3.translation)
+                stiffness = F_norm / np.linalg.norm(palp_pt - curr_pose_se3.translation)
                 max_stiffness = max(stiffness, max_stiffness)
                 # search.update_outcome(palp_pt, max_stiffness)
 
-                if Frms > Frms_LIMIT and not using_force_control:
+                if F_norm > F_norm_LIMIT and not using_force_control:
                     using_force_control = True
                     start_data_collection = True
                     oscill_start_time = time.time()

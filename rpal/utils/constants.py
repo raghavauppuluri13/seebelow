@@ -2,16 +2,23 @@ import numpy as np
 from pathlib import Path
 import rpal
 
+# spacemouse vendor and product id
 SPACEM_VENDOR_ID = 9583
 SPACEM_PRODUCT_ID = 50741
+
+# useful paths
 RPAL_PKG_PATH = Path(rpal.__file__).parent.absolute()
 RPAL_CFG_PATH = Path(rpal.__file__).parent.absolute() / "config"
 RPAL_MESH_PATH = Path(rpal.__file__).parent.absolute() / "meshes"
+RPAL_CKPT_PATH = Path(rpal.__file__).parent.absolute() / ".ckpts"
 
 OSC_CTRL_TYPE = "OSC_POSE"
 OSC_DELTA_CFG = "osc-pose-controller-delta.yml"
 OSC_ABSOLUTE_CFG = "osc-pose-controller.yml"
 BASE_CALIB_FOLDER = RPAL_CFG_PATH / "base_camera_calib"
+
+# tumor color thresholding for ground truth collection
+TUMOR_HSV_THRESHOLD = (np.array([85, 174, 4]), np.array([116, 255, 36]))
 
 SIMPLE_TEST_BBOX_PHANTOM_HEMISPHERE = np.array(
     [

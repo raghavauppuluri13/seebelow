@@ -1,3 +1,5 @@
+*.ckpts
+camera_calibration_*
 external
 *.lock
 data/*

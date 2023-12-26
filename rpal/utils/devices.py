@@ -37,15 +37,23 @@ class RealsenseCapture:
         self.rs.start_capture(True)  # true: start recording with capture
         self.intrinsics = o3c.Tensor(self.rs.get_metadata().intrinsics.intrinsic_matrix)
 
-    def read(self):
+    def read(self, get_mask=None):
         im_rgbd = self.rs.capture_frame(True, True)  # wait for frames and align them
+
+        color_tensor = im_rgbd.color.as_tensor()
+        color_np = color_tensor.numpy()
+
+        if get_mask is not None:
+            mask = get_mask(color_np.copy())
+            depth_tensor = im_rgbd.depth.as_tensor()
+            depth_np = depth_tensor.numpy()
+            depth_np[mask == 0] = 0
+
         pcd = o3d.t.geometry.PointCloud.create_from_rgbd_image(
             im_rgbd, self.intrinsics
         ).to_legacy()
 
-        im = np.asarray(im_rgbd.color.to_legacy())
-
-        return im, pcd
+        return color_np, pcd
 
 
 class ForceSensor:
