@@ -1,12 +1,14 @@
-import numpy as np
-from typing import Union
 from enum import Enum
-import open3d as o3d
 from pathlib import Path
-from rpal.algorithms.grid import SurfaceGridMap
-from rpal.algorithms.gp import SquaredExpKernel
+from typing import Union
+
+import numpy as np
+import open3d as o3d
+
 from rpal.algorithms.active_area_search import ActiveAreaSearch
 from rpal.algorithms.bayesian_optimization import BayesianOptimization
+from rpal.algorithms.gp import SquaredExpKernel
+from rpal.algorithms.grid import SurfaceGridMap
 
 
 class GridVisualizer:

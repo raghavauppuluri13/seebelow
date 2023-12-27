@@ -1,10 +1,10 @@
 import numpy as np
-from scipy.stats import norm
-from rpal.algorithms.gp import GP, SquaredExpKernel
-from rpal.algorithms.grid import SurfaceGridMap, GridMap2D, Grid
-from rpal.algorithms.gui import HeatmapAnimation
-
 from scipy.ndimage import gaussian_filter
+from scipy.stats import norm
+
+from rpal.algorithms.gp import GP, SquaredExpKernel
+from rpal.algorithms.grid import Grid, GridMap2D, SurfaceGridMap
+from rpal.algorithms.gui import HeatmapAnimation
 
 
 class BayesianOptimization:

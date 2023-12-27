@@ -4,9 +4,8 @@ O: franka base frame
 CAM: overhead camera frame
 """
 
-import pinocchio as pin
 import numpy as np
-
+import pinocchio as pin
 
 O_t_CAM = np.array([0.56746543, 0.12762998, 0.10405758])
 O_rpy_CAM = np.array([3.13075706, -0.03085785, -0.27018787])

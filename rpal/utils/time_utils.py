@@ -1,8 +1,9 @@
+# From https://github.com/commaai/openpilot/blob/7638572e38773cdc5ecbf804ffc733fa9dd7893f/common/realtime.py#L48
 import gc
 import os
 import time
 from collections import deque
-from typing import Optional, List, Union
+from typing import List, Optional, Union
 
 from setproctitle import getproctitle
 

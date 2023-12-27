@@ -1,7 +1,8 @@
 import sys
+
 from PyQt5 import Qt
+from vedo import Cone, Plotter
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from vedo import Plotter, Cone
 
 
 class MainWindow(Qt.QMainWindow):

@@ -1,19 +1,17 @@
-import open3d as o3d
-from copy import deepcopy
 import argparse
-import os
 import math
+import os
+from copy import deepcopy
+
 import numpy as np
+import open3d as o3d
+import pinocchio as pin
 from scipy.spatial.transform import Rotation
 
-import pinocchio as pin
-
-
 from interpolator import Interpolator, InterpType
+from rpal.utils.math_utils import unit
 from rpal.utils.pcd_utils import visualize_pcds
 from rpal.utils.transform_utils import pose2mat
-from rpal.utils.math_utils import unit
-
 
 parser = argparse.ArgumentParser(description="Time-series Heatmap Generator")
 parser.add_argument(

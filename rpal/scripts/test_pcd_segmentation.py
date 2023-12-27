@@ -1,18 +1,21 @@
-import open3d as o3d
-import numpy as np
-from datetime import datetime
-from rpal.utils.devices import RealsenseCapture
-from rpal.utils.constants import *
-from rpal.utils.segmentation_utils import get_hsv_threshold, get_color_mask
-from rpal.utils.pcd_utils import visualize_pcds
-import cv2
 import argparse
+from datetime import datetime
+
+import cv2
+import numpy as np
+import open3d as o3d
+
+from rpal.utils.constants import *
+from rpal.utils.devices import RealsenseCapture
+from rpal.utils.pcd_utils import pick_surface_bbox, visualize_pcds
+from rpal.utils.segmentation_utils import get_color_mask, get_hsv_threshold
 
 rs = RealsenseCapture()
 
 # HSV color thresholding
+
+im, pcd = rs.read()
 im, pcd = rs.read(get_mask=lambda x: get_color_mask(x, TUMOR_HSV_THRESHOLD))
-# im, pcd = rs.read()
 
 visualize_pcds([pcd])
 

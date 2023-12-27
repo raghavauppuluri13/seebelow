@@ -1,13 +1,14 @@
-import open3d as o3d
 import argparse
-from rpal.utils.pcd_utils import crop_pcd, visualize_pcds
-from rpal.utils.math_utils import unit
 import os
-import numpy as np
-import cv2
+from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
-from multiprocessing.pool import ThreadPool
+import cv2
+import numpy as np
+import open3d as o3d
+
+from rpal.utils.math_utils import unit
+from rpal.utils.pcd_utils import crop_pcd, visualize_pcds
 
 CROP_PARAMS = (
     np.array(

@@ -4,6 +4,7 @@ import multiprocessing as mp
 import os
 import subprocess
 import sys
+from datetime import datetime
 from io import StringIO
 from multiprocessing import shared_memory
 from pathlib import Path
@@ -27,13 +28,16 @@ from deoxys.utils.transform_utils import mat2euler, mat2quat, quat2mat
 from rpal.utils.constants import *
 from rpal.utils.data_utils import Hz
 from rpal.utils.devices import RealsenseCapture
+from rpal.utils.keystroke_counter import KeyCode, KeystrokeCounter
+from rpal.utils.pcd_utils import pick_surface_bbox, visualize_pcds
+from rpal.utils.segmentation_utils import get_color_mask, get_hsv_threshold
 from rpal.utils.time_utils import Ratekeeper
 from rpal.utils.transform_utils import euler2mat
 
 
 def deoxys_ctrl(shm_posearr_name, stop_event):
     existing_shm = shared_memory.SharedMemory(name=shm_posearr_name)
-    O_T_EE_shm = np.ndarray(7, dtype=np.float32, buffer=existing_shm.buf)
+    O_T_EE_posquat_shm = np.ndarray(7, dtype=np.float32, buffer=existing_shm.buf)
     robot_interface = FrankaInterface(
         str(RPAL_CFG_PATH / args.interface_cfg), use_visualizer=False, control_freq=20
     )
@@ -47,8 +51,8 @@ def deoxys_ctrl(shm_posearr_name, stop_event):
 
     while not stop_event.is_set():
         q, p = robot_interface.last_eef_quat_and_pos
-        O_T_EE[:3] = p.flatten()
-        O_T_EE[3:7] = q.flatten()
+        O_T_EE_posquat[:3] = p.flatten()
+        O_T_EE_posquat[3:7] = q.flatten()
 
         action, grasp = input2action(
             device=device,
@@ -82,14 +86,15 @@ if __name__ == "__main__":
     argparser.add_argument("--cam-name", type=str, default="wrist_d415")
     args = argparser.parse_args()
 
-    O_T_EE = np.zeros(7, dtype=np.float32)
-    shm = shared_memory.SharedMemory(create=True, size=O_T_EE.nbytes)
-    O_T_EE = np.ndarray(O_T_EE.shape, dtype=O_T_EE.dtype, buffer=shm.buf)
+    O_T_EE_posquat = np.zeros(7, dtype=np.float32)
+    shm = shared_memory.SharedMemory(create=True, size=O_T_EE_posquat.nbytes)
+    O_T_EE_posquat = np.ndarray(
+        O_T_EE_posquat.shape, dtype=O_T_EE_posquat.dtype, buffer=shm.buf
+    )
     stop_event = mp.Event()
     ctrl_process = mp.Process(target=deoxys_ctrl, args=(shm.name, stop_event))
     ctrl_process.start()
 
-    rs = RealsenseCapture()
     with open(
         str(RPAL_CFG_PATH / args.calibration_cfg / "extrinsics.yaml"), "r"
     ) as file:
@@ -102,17 +107,10 @@ if __name__ == "__main__":
         E_T_C[:3, :3] = ee_rot
         E_T_C[:3, 3] = ee_pos
 
-    im, pcd = rs.read()
+    rs = RealsenseCapture()
+    im, pcd = rs.read(get_mask=lambda x: get_color_mask(x, TUMOR_HSV_THRESHOLD))
 
     rk = Ratekeeper(30)
-
-    vis = o3d.visualization.Visualizer()
-    f = o3d.geometry.TriangleMesh.create_coordinate_frame(
-        size=0.1  # specify the size of coordinate frame
-    )
-
-    vis.create_window()
-    vis.add_geometry(pcd)
 
     rtv = RealtimeVisualizer()
     rtv.add_frame("BASE")
@@ -123,37 +121,40 @@ if __name__ == "__main__":
     rot_45[:3, :3] = euler2mat([0, 0, -np.pi / 4])
     rtv.set_frame_tf("EEF_45", rot_45)
     rtv.add_frame("CAM", "EEF")
-    rtv.add_frame("PHANTOM", "BASE")
-    try:
-        while 1:
-            if np.all(O_T_EE == 0):
-                print("Waiting for pose...")
-                continue
-            im, new_pcd = rs.read()
+    rtv.add_frame("TUMOR", "BASE")
 
-            ee_pos = np.array(O_T_EE[:3])
-            ee_rot = quat2mat(O_T_EE[3:7])
-            O_T_E = np.eye(4)
-            O_T_E[:3, :3] = ee_rot
-            O_T_E[:3, 3] = ee_pos
+    while 1:
+        if not np.all(O_T_EE_posquat == 0):
+            break
+        rk.keep_time()
 
-            O_T_C = O_T_E @ E_T_C
+    # _, new_pcd = rs.read(get_mask=lambda x: get_color_mask(x, TUMOR_HSV_THRESHOLD))
+    _, new_pcd = rs.read()
 
-            rtv.set_frame_tf("EEF", O_T_E)
-            rtv.set_frame_tf("CAM", E_T_C)
+    ee_pos = np.array(O_T_EE_posquat[:3])
+    ee_mat = quat2mat(O_T_EE_posquat[3:7])
+    O_T_E = np.eye(4)
+    O_T_E[:3, :3] = ee_mat
+    O_T_E[:3, 3] = ee_pos
+    O_T_C = O_T_E @ E_T_C
 
-            rk.keep_time()
+    new_pcd.transform(O_T_C)
+    pcd.points = new_pcd.points
+    pcd.colors = new_pcd.colors
 
-            new_pcd.transform(O_T_C)
+    bbox = pick_surface_bbox(new_pcd)
+    print(np_to_constant(pcd, np.asarray(bbox.get_box_points())))
 
-            pcd.points = new_pcd.points
-            pcd.colors = new_pcd.colors
+    tumor_pts = np.asarray(pcd.points)
+    tumor_mean = tumor_pts.mean(axis=0)
+    O_T_TUM = np.eye(4)
+    O_T_TUM[:3, 3] = tumor_mean
 
-            vis.update_geometry(pcd)
-            vis.poll_events()
-            vis.update_renderer()
-    except KeyboardInterrupt:
-        pass
+    # tf visualizer
+    rtv.set_frame_tf("EEF", O_T_E)
+    rtv.set_frame_tf("CAM", E_T_C)
+    rtv.set_frame_tf("TUMOR", O_T_TUM)
+
     stop_event.set()
     ctrl_process.join()
     print("CTRL STOPPED!")
@@ -161,3 +162,6 @@ if __name__ == "__main__":
     shm.close()
     shm.unlink()
     vis.destroy_window()
+
+    now_str = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+    o3d.io.write_point_cloud(str(RPAL_MESH_PATH / f"tumors_gt_{now_str}.ply"), pcd)

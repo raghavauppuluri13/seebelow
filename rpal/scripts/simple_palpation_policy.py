@@ -1,16 +1,15 @@
+import argparse
 import time
 
-import argparse
-
 import numpy as np
-from deoxys.franka_interface import FrankaInterface
+
 from deoxys import config_root
+from deoxys.franka_interface import FrankaInterface
+from deoxys.utils import YamlConfig
 from deoxys.utils.config_utils import get_default_controller_config
 from deoxys.utils.input_utils import input2action
-from deoxys.utils import YamlConfig
 from deoxys.utils.io_devices import SpaceMouse
 from deoxys.utils.log_utils import get_deoxys_example_logger
-
 from utils import DatasetWriter
 
 logger = get_deoxys_example_logger()

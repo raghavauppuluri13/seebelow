@@ -25,14 +25,15 @@ Keyboard:
     [q\ESC] Quit
 """
 
+import datetime
 import math
+import os
 import time
+from pathlib import Path
+
 import cv2
 import numpy as np
 import pyrealsense2 as rs
-from pathlib import Path
-import datetime
-import os
 
 YAW = -0.009440897233111693
 PITCH = 0.025467074800567053

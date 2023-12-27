@@ -1,10 +1,12 @@
+from functools import cached_property
+from typing import Tuple, Type, TypeVar
+
 import numpy as np
 import open3d as o3d
-from typing import Type, TypeVar, Tuple
-from functools import cached_property
 
+from rpal.utils.math_utils import project_axis_to_plane, unit
 from rpal.utils.pcd_utils import visualize_pcds
-from rpal.utils.math_utils import unit, project_axis_to_plane
+
 
 """
 approximate surface using grid squares

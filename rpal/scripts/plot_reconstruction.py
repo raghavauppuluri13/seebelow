@@ -1,15 +1,16 @@
-import open3d as o3d
-from copy import deepcopy
 import argparse
-import os
 import math
+import os
+from copy import deepcopy
+
 import numpy as np
+import open3d as o3d
+import pinocchio as pin
 from scipy.spatial.transform import Rotation
 
-import pinocchio as pin
-
-from rpal.utils.pcd_utils import visualize_pcds, stl_to_pcd, animate_point_cloud
 from rpal.utils.data_utils import RPAL_PKG_PATH
+from rpal.utils.pcd_utils import (animate_point_cloud, stl_to_pcd,
+                                  visualize_pcds)
 from rpal.utils.transform_utils import pose2mat
 
 quat_gt = np.array([0, -0.7071068, 0, 0.7071068])

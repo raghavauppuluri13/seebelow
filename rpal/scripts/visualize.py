@@ -1,32 +1,25 @@
-import sys
 import argparse
-from vedo import *
-import os
-import numpy as np
-from PyQt5 import Qt
-import matplotlib.pyplot as plt
-import open3d as o3d
 import json
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5.QtCore import QCoreApplication
-from PyQt5.QtWidgets import (
-    QApplication,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QMainWindow,
-    QOpenGLWidget,
-)
-from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from PyQt5.QtGui import QImage, QPixmap
-import OpenGL.GL as gl
-from OpenGL.GL import *
-from PyQt5.QtCore import QTimer
-import cv2
-
+import os
+import sys
 import time
 from pathlib import Path
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import open3d as o3d
+import OpenGL.GL as gl
+from matplotlib.backends.backend_qt5agg import \
+    FigureCanvasQTAgg as FigureCanvas
+from OpenGL.GL import *
+from PyQt5 import Qt
+from PyQt5.QtCore import QCoreApplication, QTimer
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMainWindow,
+                             QOpenGLWidget, QVBoxLayout, QWidget)
+from vedo import *
+from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 
 class MainWindow(Qt.QMainWindow):

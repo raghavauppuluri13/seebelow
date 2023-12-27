@@ -1,40 +1,36 @@
-import time
-
-from copy import deepcopy
-
 import argparse
+import time
 from collections import deque
+from copy import deepcopy
 from pathlib import Path
-import open3d as o3d
 
 import numpy as np
-from deoxys.franka_interface import FrankaInterface
-from deoxys import config_root
-from deoxys.utils.config_utils import get_default_controller_config
-from deoxys.utils.input_utils import input2action
-from deoxys.utils.transform_utils import quat2axisangle
-from deoxys.utils import YamlConfig
-from deoxys.utils.io_devices import SpaceMouse
-from deoxys.utils.log_utils import get_deoxys_example_logger
-
+import open3d as o3d
+import pinocchio as pin
+from pinocchio.rpy import matrixToRpy, rpyToMatrix
 from scipy.spatial.transform import Rotation
 
-from rpal.utils.devices import ForceSensor
+from deoxys import config_root
+from deoxys.franka_interface import FrankaInterface
+from deoxys.utils import YamlConfig
+from deoxys.utils.config_utils import get_default_controller_config
+from deoxys.utils.input_utils import input2action
+from deoxys.utils.io_devices import SpaceMouse
+from deoxys.utils.log_utils import get_deoxys_example_logger
+from deoxys.utils.transform_utils import quat2axisangle
+from rpal.algorithms.search import (ActiveSearch, ActiveSearchAlgos,
+                                    RandomSearch)
+from rpal.utils.constants import (RPAL_PKG_PATH,
+                                  SIMPLE_TEST_BBOX_PHANTOM_HEMISPHERE)
+from rpal.utils.control_utils import generate_joint_space_min_jerk
 from rpal.utils.data_utils import DatasetWriter, Hz
-from rpal.utils.math_utils import unit, three_pts_to_rot_mat, rot_about_orthogonal_axes
+from rpal.utils.devices import ForceSensor
+from rpal.utils.interpolator import Interpolator, InterpType
+from rpal.utils.math_utils import (rot_about_orthogonal_axes,
+                                   three_pts_to_rot_mat, unit)
 from rpal.utils.pcd_utils import surface_mesh_to_pcd
 from rpal.utils.proc_utils import RingBuffer, RunningStats
-from rpal.utils.control_utils import generate_joint_space_min_jerk
 from rpal.utils.useful_poses import O_T_CAM, O_xaxis
-from rpal.utils.interpolator import Interpolator, InterpType
-from rpal.utils.constants import SIMPLE_TEST_BBOX_PHANTOM_HEMISPHERE, RPAL_PKG_PATH
-from rpal.algorithms.search import RandomSearch, ActiveSearch, ActiveSearchAlgos
-
-from pinocchio.rpy import matrixToRpy, rpyToMatrix
-
-import pinocchio as pin
-
-import numpy as np
 
 
 class PalpateState:

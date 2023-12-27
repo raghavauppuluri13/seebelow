@@ -1,32 +1,25 @@
+import argparse
 import time
-
+from collections import deque
 from copy import deepcopy
 
-import argparse
-from collections import deque
-import open3d as o3d
-
 import numpy as np
-from deoxys.franka_interface import FrankaInterface
-from deoxys import config_root
-from deoxys.utils.config_utils import get_default_controller_config
-from deoxys.utils.input_utils import input2action
-from deoxys.utils.transform_utils import quat2axisangle
-from deoxys.utils import YamlConfig
-from deoxys.utils.io_devices import SpaceMouse
-from deoxys.utils.log_utils import get_deoxys_example_logger
-
+import open3d as o3d
+import pinocchio as pin
+from pinocchio.rpy import matrixToRpy, rpyToMatrix
 from scipy.spatial.transform import Rotation
 
+from deoxys import config_root
+from deoxys.franka_interface import FrankaInterface
+from deoxys.utils import YamlConfig
+from deoxys.utils.config_utils import get_default_controller_config
+from deoxys.utils.input_utils import input2action
+from deoxys.utils.io_devices import SpaceMouse
+from deoxys.utils.log_utils import get_deoxys_example_logger
+from deoxys.utils.transform_utils import quat2axisangle
 from devices import ForceSensor
-
-from utils import DatasetWriter, Hz, three_pts_to_rot_mat
-
-from pinocchio.rpy import matrixToRpy, rpyToMatrix
-
-import pinocchio as pin
-
 from interpolator import Interpolator, InterpType
+from utils import DatasetWriter, Hz, three_pts_to_rot_mat
 
 logger = get_deoxys_example_logger()
 SAMPLE_RATE = 30  # hz

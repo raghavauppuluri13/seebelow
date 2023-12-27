@@ -1,33 +1,33 @@
-""" Generate camera calibration dataset for https://github.com/ToyotaResearchInstitute/handical"""
-import numpy as np
-import yaml
-from tqdm import tqdm
-import sys
+"""Generate camera calibration dataset for https://github.com/ToyotaResearchInstitute/handical"""
+import argparse
+import ctypes
+import multiprocessing as mp
 import os
 import subprocess
-from rpal.utils.devices import RealsenseCapture
-import cv2
-import argparse
+import sys
 from io import StringIO
-import yaml
+from multiprocessing import shared_memory
 from pathlib import Path
-from rpal.utils.data_utils import Hz
-from rpal.utils.constants import *
-from rpal.utils.time_utils import Ratekeeper
-from rpal.utils.keystroke_counter import KeyCode, KeystrokeCounter
-from deoxys.franka_interface import FrankaInterface
+
+import cv2
+import numpy as np
 import pinocchio as pin
-from deoxys.utils.transform_utils import quat2mat, mat2euler
+import yaml
+from scipy.spatial.transform import Rotation
+from tqdm import tqdm
+
+from deoxys.franka_interface import FrankaInterface
+from deoxys.utils import YamlConfig
 from deoxys.utils.config_utils import get_default_controller_config
 from deoxys.utils.input_utils import input2action
 from deoxys.utils.io_devices import SpaceMouse
 from deoxys.utils.log_utils import get_deoxys_example_logger
-from deoxys.utils import YamlConfig
-from scipy.spatial.transform import Rotation
-import multiprocessing as mp
-from multiprocessing import shared_memory
-import ctypes
-from pynput.keyboard import Key, Listener
+from deoxys.utils.transform_utils import mat2euler, quat2mat
+from rpal.utils.constants import *
+from rpal.utils.data_utils import Hz
+from rpal.utils.devices import RealsenseCapture
+from rpal.utils.keystroke_counter import KeyCode, KeystrokeCounter
+from rpal.utils.time_utils import Ratekeeper
 
 INT_SIZE = ctypes.sizeof(ctypes.c_int)
 

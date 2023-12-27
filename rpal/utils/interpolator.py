@@ -1,7 +1,7 @@
-import numpy as np
-from enum import Enum
 from copy import deepcopy
+from enum import Enum
 
+import numpy as np
 import pinocchio as pin
 
 

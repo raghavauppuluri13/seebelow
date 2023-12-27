@@ -1,18 +1,16 @@
-import numpy as np
-import os
-import cv2
-import time
-from scipy.spatial.transform import Rotation
-import open3d as o3d
 import argparse
 import datetime
+import os
+import time
 
-from rpal.utils.pcd_utils import crop_pcd, visualize_pcds, get_centered_bbox
-from rpal.utils.math_utils import (
-    unit,
-    get_rot_mat_from_basis,
-    three_pts_to_rot_mat,
-)
+import cv2
+import numpy as np
+import open3d as o3d
+from scipy.spatial.transform import Rotation
+
+from rpal.utils.math_utils import (get_rot_mat_from_basis,
+                                   three_pts_to_rot_mat, unit)
+from rpal.utils.pcd_utils import crop_pcd, get_centered_bbox, visualize_pcds
 
 EVAL_scale = 1
 EVAL_R = np.array(

@@ -1,5 +1,5 @@
-import open3d as o3d
 import numpy as np
+import open3d as o3d
 
 # Create an empty voxel grid
 voxel_grid = o3d.geometry.VoxelGrid()

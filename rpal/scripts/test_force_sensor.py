@@ -1,15 +1,14 @@
-from devices import ForceSensor
-import time
-
 import argparse
 import time
 
 import numpy as np
+
 from deoxys.franka_interface import FrankaInterface
 from deoxys.utils.config_utils import get_default_controller_config
 from deoxys.utils.input_utils import input2action
 from deoxys.utils.io_devices import SpaceMouse
 from deoxys.utils.log_utils import get_deoxys_example_logger
+from devices import ForceSensor
 
 logger = get_deoxys_example_logger()
 

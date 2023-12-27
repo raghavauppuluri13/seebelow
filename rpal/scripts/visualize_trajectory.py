@@ -1,9 +1,11 @@
+import argparse
+
 import open3d as o3d
 import yaml
-from rpal.utils.transform_utils import *
-from rpal.utils.pcd_utils import visualize_pcds
+
 from rpal.utils.constants import *
-import argparse
+from rpal.utils.pcd_utils import visualize_pcds
+from rpal.utils.transform_utils import *
 
 if __name__ == "__main__":
 

@@ -1,5 +1,5 @@
-import open3d as o3d
 import numpy as np
+import open3d as o3d
 
 
 def stl_to_pcd(stl_path, scale=0.001, transform=np.eye(4), color=[1, 0, 0]):
@@ -140,7 +140,6 @@ def pick_surface_bbox(pcd, bbox_pts=None):
         bbox_pts[:4] = pts
         pts[:, -1] -= 1
         bbox_pts[4:8] = pts
-    print(bbox_pts)
     bbox = o3d.geometry.OrientedBoundingBox.create_from_points(
         o3d.utility.Vector3dVector(bbox_pts)
     )

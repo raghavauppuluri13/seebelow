@@ -1,6 +1,8 @@
 from typing import Tuple
-from rpal.algorithms.grid import GridMap2D
+
 import numpy as np
+
+from rpal.algorithms.grid import GridMap2D
 
 
 class SquaredExpKernel:

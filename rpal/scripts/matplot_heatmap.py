@@ -1,12 +1,13 @@
 import argparse
 import os
-from scipy.interpolate import griddata
-import numpy as np
-from tqdm import tqdm
+
 import cv2
-import scipy.ndimage as sp
 import matplotlib.pyplot as plt
+import numpy as np
+import scipy.ndimage as sp
 from matplotlib import cm, patches
+from scipy.interpolate import griddata
+from tqdm import tqdm
 
 # Argument Parser
 parser = argparse.ArgumentParser(description="Time-series Heatmap Generator")

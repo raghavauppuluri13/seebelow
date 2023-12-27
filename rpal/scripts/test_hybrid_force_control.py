@@ -1,19 +1,18 @@
-import time
-
 import argparse
+import time
 from collections import deque
 
 import numpy as np
-from deoxys.franka_interface import FrankaInterface
+
 from deoxys import config_root
+from deoxys.franka_interface import FrankaInterface
+from deoxys.utils import YamlConfig
 from deoxys.utils.config_utils import get_default_controller_config
 from deoxys.utils.input_utils import input2action
-from deoxys.utils import YamlConfig
 from deoxys.utils.io_devices import SpaceMouse
 from deoxys.utils.log_utils import get_deoxys_example_logger
-from rpal.utils.math_utils import rot_about_orthogonal_axes
 from rpal.utils.control_utils import generate_joint_space_min_jerk
-
+from rpal.utils.math_utils import rot_about_orthogonal_axes
 
 logger = get_deoxys_example_logger()
 

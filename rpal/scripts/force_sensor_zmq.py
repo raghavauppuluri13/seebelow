@@ -1,13 +1,12 @@
-from devices import ForceSensor
+import argparse
 import time
-from utils import Hz
-
-from force_sensor_pb2 import ForceSensorMessage
 
 import yaml
-import argparse
-
 import zmq
+
+from devices import ForceSensor
+from force_sensor_pb2 import ForceSensorMessage
+from utils import Hz
 
 
 def sensor_data_to_force_msg(sensor_data) -> ForceSensorMessage:

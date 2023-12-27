@@ -1,11 +1,12 @@
+import argparse
+
+import cv2
+import numpy as np
 import open3d as o3d
 
-import numpy as np
-from rpal.utils.devices import RealsenseCapture
 from rpal.utils.constants import *
-from rpal.utils.segmentation_utils import get_hsv_threshold, get_color_mask
-import cv2
-import argparse
+from rpal.utils.devices import RealsenseCapture
+from rpal.utils.segmentation_utils import get_color_mask, get_hsv_threshold
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--rgb", type=bool, default=False)

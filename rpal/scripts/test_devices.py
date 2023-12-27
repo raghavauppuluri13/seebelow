@@ -1,7 +1,9 @@
+import time
+
+import numpy as np
+
 from devices import ForceSensor, RealsenseCapture
 from utils import Hz
-import numpy as np
-import time
 
 if __name__ == "__main__":
 

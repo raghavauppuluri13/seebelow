@@ -1,7 +1,8 @@
-from typing import Tuple
-import numpy as np
-import cv2 as cv
 import argparse
+from typing import Tuple
+
+import cv2 as cv
+import numpy as np
 
 
 def get_hsv_threshold(img: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:

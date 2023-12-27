@@ -1,20 +1,16 @@
-import time
-import open3d as o3d
-import open3d.core as o3c
-import numpy as np
-import cv2
-
-import serial
-
-import urllib
 import argparse
 import datetime
-
-import pyrealsense2 as rs
-
+import time
+import urllib
 from multiprocessing import Process
-
 from typing import NamedTuple
+
+import cv2
+import numpy as np
+import open3d as o3d
+import open3d.core as o3c
+import pyrealsense2 as rs
+import serial
 
 
 class RealsenseCapture:

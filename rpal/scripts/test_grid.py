@@ -1,11 +1,13 @@
-import open3d as o3d
-from pathlib import Path
-import numpy as np
 from collections import defaultdict
-from rpal.utils.pcd_utils import surface_mesh_to_pcd
-from rpal.utils.constants import RPAL_PKG_PATH
+from pathlib import Path
 
-from rpal.algorithms.search import RandomSearch, ActiveSearch, ActiveSearchAlgos
+import numpy as np
+import open3d as o3d
+
+from rpal.algorithms.search import (ActiveSearch, ActiveSearchAlgos,
+                                    RandomSearch)
+from rpal.utils.constants import RPAL_PKG_PATH
+from rpal.utils.pcd_utils import surface_mesh_to_pcd
 
 if __name__ == "__main__":
     surface_pcd_cropped = surface_mesh_to_pcd(str(RPAL_PKG_PATH / "meshes" / "phantom_mesh.ply"))
