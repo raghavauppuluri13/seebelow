@@ -15,7 +15,8 @@ rs = RealsenseCapture()
 # HSV color thresholding
 
 im, pcd = rs.read()
-im, pcd = rs.read(get_mask=lambda x: get_color_mask(x, TUMOR_HSV_THRESHOLD))
+# im, pcd = rs.read(get_mask=lambda x: get_hsv_threshold(x))
+# im, pcd = rs.read(get_mask=lambda x: get_color_mask(x, TUMOR_HSV_THRESHOLD))
 
 visualize_pcds([pcd])
 

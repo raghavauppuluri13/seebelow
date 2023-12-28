@@ -18,16 +18,13 @@ from deoxys.utils.input_utils import input2action
 from deoxys.utils.io_devices import SpaceMouse
 from deoxys.utils.log_utils import get_deoxys_example_logger
 from deoxys.utils.transform_utils import quat2axisangle
-from rpal.algorithms.search import (ActiveSearch, ActiveSearchAlgos,
-                                    RandomSearch)
-from rpal.utils.constants import (RPAL_PKG_PATH,
-                                  SIMPLE_TEST_BBOX_PHANTOM_HEMISPHERE)
+from rpal.algorithms.search import ActiveSearch, ActiveSearchAlgos, RandomSearch
+from rpal.utils.constants import RPAL_PKG_PATH, SIMPLE_TEST_BBOX_PHANTOM_HEMISPHERE
 from rpal.utils.control_utils import generate_joint_space_min_jerk
 from rpal.utils.data_utils import DatasetWriter, Hz
 from rpal.utils.devices import ForceSensor
 from rpal.utils.interpolator import Interpolator, InterpType
-from rpal.utils.math_utils import (rot_about_orthogonal_axes,
-                                   three_pts_to_rot_mat, unit)
+from rpal.utils.math_utils import rot_about_orthogonal_axes, three_pts_to_rot_mat, unit
 from rpal.utils.pcd_utils import surface_mesh_to_pcd
 from rpal.utils.proc_utils import RingBuffer, RunningStats
 from rpal.utils.useful_poses import O_T_CAM, O_xaxis
@@ -50,9 +47,7 @@ class PalpateState:
 
 
 logger = get_deoxys_example_logger()
-SAMPLE_RATE = 30  # hz
 PHANTOM_MESH_PATH = str(RPAL_PKG_PATH / "meshes" / "phantom_mesh.ply")
-RPAL_HYBRID_POSITION_FORCE = "RPAL_HYBRID_POSITION_FORCE"
 np.random.seed(100)
 F_norm_LIMIT = 5.0
 PALP_WRENCH_MAG = 4  # N
@@ -61,6 +56,7 @@ FORCE_BUFFER_STABILITY_THRESHOLD = 0.05  # N
 POS_BUFFER_STABILITY_THRESHOLD = 1e-4  # m
 ABOVE_HEIGHT = 0.02
 PALPATE_DEPTH = 0.035
+CTRL_FREQ = 100
 
 sample_time = time.perf_counter()
 goals = deque([O_T_CAM])
@@ -77,17 +73,10 @@ pos_buffer = RingBuffer(BUFFER_SIZE, POS_BUFFER_STABILITY_THRESHOLD)
 running_stats = RunningStats()
 init_eef_pose = None
 curr_eef_pose = None
-prev_pt = None
-prev_norm = None
-FORCE = None
-panda_force = None
-STEP_FAST = 100
-STEP_SLOW = 2000
 F_norm = 0.0
 Fxyz = 0.0
 max_stiffness = -np.inf
 palp_pt = None
-CTRL_FREQ = 100
 start_time = None
 
 oscill_start_time = None
