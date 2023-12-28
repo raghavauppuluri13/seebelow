@@ -127,8 +127,8 @@ class SurfaceGridMap(Grid):
                     bbox_pts.append(np.array([x, y, z]))
         bbox_pts = np.array(bbox_pts)
         self._bbox = o3d.geometry.OrientedBoundingBox.create_from_points(
-                    o3d.utility.Vector3dVector(bbox_pts)
-                )
+            o3d.utility.Vector3dVector(bbox_pts)
+        )
         self._bbox.color = [1, 0, 0]
 
         # cells are defined by their center point, normal vector, and xyz axes
@@ -226,7 +226,11 @@ class SurfaceGridMap(Grid):
                 )
                 grid_T[:3, 3] = cell_center
                 tfs.append(grid_T)
-        self._pcd.paint_uniform_color([1,0,0])
+
+        # original pcd is cyan
+        self._pcd.paint_uniform_color([0, 1, 1])
+        # generated grid centers are in magenta
+        self._grid_pcd.paint_uniform_color([1, 0, 1])
         visualize_pcds([self._grid_pcd, self._pcd, self._bbox], tfs=tfs)
 
     @property

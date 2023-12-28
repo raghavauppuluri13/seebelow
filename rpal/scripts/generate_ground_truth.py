@@ -187,6 +187,7 @@ if __name__ == "__main__":
     print("CTRL STOPPED!")
 
     now_str = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+
     o3d.io.write_point_cloud(str(RPAL_MESH_PATH / f"tumors_gt_{now_str}.ply"), pcd)
 
     shm.close()

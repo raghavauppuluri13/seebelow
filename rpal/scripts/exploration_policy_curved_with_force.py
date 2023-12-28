@@ -114,9 +114,11 @@ if __name__ == "__main__":
     dataset_writer = DatasetWriter(args, record_pcd=False, print_hz=False)
     interp = Interpolator(interp_type=InterpType.SE3)
 
-    surface_pcd_cropped = surface_mesh_to_pcd(PHANTOM_MESH_PATH)
-    search = RandomSearch(surface_pcd_cropped)
-    # search.grid.visualize()
+    pcd = o3d.io.read_point_cloud(str(SURFACE_SCAN_PATH))
+    surface_mesh = scan2mesh(pcd)
+    roi_pcd = mesh2roi(surface_mesh)
+    search = RandomSearch(roi_pcd)
+    search.grid.visualize()
     # search = ActiveSearch(phantom_pcd, ActiveSearchAlgos.BO)
 
     def palpate(pos, O_surf_norm_unit=np.array([0, 0, 1])):

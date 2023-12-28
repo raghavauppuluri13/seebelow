@@ -34,9 +34,30 @@ def animate_point_cloud(pcd, other_geoms=[]):
     vis.destroy_window()
 
 
-def surface_mesh_to_pcd(mesh_path, bbox_pts=None):
-    surface_mesh = o3d.io.read_triangle_mesh(mesh_path)
-    surface_mesh = surface_mesh.subdivide_midpoint(number_of_iterations=2)
+def scan2mesh(pcd):
+    from rpal.utils.constants import BBOX_PHANTOM, GT_SCAN_POSE
+
+    bbox = pick_surface_bbox(pcd, bbox_pts=BBOX_PHANTOM)
+    pcd = pcd.crop(bbox)
+    pcd = pcd.voxel_down_sample(voxel_size=0.001)
+    camera = list(GT_SCAN_POSE[:3])
+    radius = 1 * 100
+    _, pt_map = pcd.hidden_point_removal(camera, radius)
+    pcd = pcd.select_by_index(pt_map)
+    pcd.compute_convex_hull()
+    pcd.estimate_normals()
+    pcd.orient_normals_consistent_tangent_plane(10)
+
+    mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
+        pcd, linear_fit=True
+    )[0]
+    mesh.compute_vertex_normals()
+    mesh.remove_degenerate_triangles()
+    return mesh
+
+
+def mesh2roi(surface_mesh, bbox_pts=None):
+    surface_mesh = surface_mesh.subdivide_midpoint(number_of_iterations=1)
     surface_mesh.compute_vertex_normals()
     surface_mesh.remove_degenerate_triangles()
 
