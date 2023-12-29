@@ -5,7 +5,7 @@ from matplotlib.animation import FuncAnimation
 
 
 class HeatmapAnimation:
-    def __init__(self, data, cmap="hot", interval=200):
+    def __init__(self, data, ground_truth, cmap="hot", interval=200):
         """
         data: List of tuples, where each tuple contains two tuples each with
               an 'X' mark position and a 2D numpy array for the heatmap data.
@@ -16,6 +16,8 @@ class HeatmapAnimation:
         self.cmap = cmap
         self.interval = interval
         self.frames = len(data)
+
+        self.ground_truth = ground_truth
 
         # Assuming each frame in data contains two tuples for two heatmaps
         self.nx, self.ny = data[0][1].shape
@@ -51,18 +53,20 @@ class HeatmapAnimation:
 
     def update(self, frame):
         """Update function for animation."""
-        next_mark1, data_frame1, data_frame2 = self.data[frame]
+        next_mark1, data_frame1 = self.data[frame]
 
         # Update the data for both heatmaps
         self.heatmap1.set_data(data_frame1)
-        self.heatmap2.set_data(data_frame2)
+        self.heatmap2.set_data(self.ground_truth)
 
         # Update the positions of the 'X' marks
         self.x_mark1.set_data(next_mark1[1], next_mark1[0])
 
         # Update color limits for both heatmaps
         self.heatmap1.set_clim(vmin=np.min(data_frame1), vmax=np.max(data_frame1))
-        self.heatmap2.set_clim(vmin=np.min(data_frame2), vmax=np.max(data_frame2))
+        self.heatmap2.set_clim(
+            vmin=np.min(self.ground_truth), vmax=np.max(self.ground_truth)
+        )
 
         return self.heatmap1, self.x_mark1, self.heatmap2
 
@@ -70,7 +74,7 @@ class HeatmapAnimation:
         """Visualize the animation."""
         plt.show()
 
-    def save_animation(self, filename="heatmap_animation.mp4"):
+    def save_animation(self, filename):
         """Save the animation as an MP4 file."""
         print("Saving animation to", filename)
         matplotlib.use("Agg")
@@ -85,12 +89,11 @@ if __name__ == "__main__":
     nx, ny = 100, 100
     # Each element in data is a tuple of tuples for two heatmaps and their 'X' marks
     data = [
-        (
-            ((np.random.randint(nx), np.random.randint(ny)), np.random.rand(nx, ny)),
-            ((np.random.randint(nx), np.random.randint(ny)), np.random.rand(nx, ny)),
-        )
+        (((np.random.randint(nx), np.random.randint(ny)), np.random.rand(nx, ny)),)
         for _ in range(frames)
     ]
 
-    animation = HeatmapAnimation(data)
+    gt = (np.random.randint(nx), np.random.randint(ny)), np.random.rand(nx, ny)
+
+    animation = HeatmapAnimation(data, gt)
     animation.save_animation("gaussian_process.mp4")

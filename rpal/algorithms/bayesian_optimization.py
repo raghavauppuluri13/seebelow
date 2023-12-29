@@ -18,15 +18,10 @@ class BayesianOptimization:
         self.y_max = max(self.y_max, prev_y) if self.y_max is not None else prev_y
         print(prev_y)
         self.gp.add_sample(prev_x_hat, prev_y)
+        self.grid.grid[prev_x_hat[0], prev_x_hat[1]] = prev_y
 
-        all_states = self.grid.vectorized_states
-        all_states = np.ravel_multi_index(all_states.T, self.grid.shape)
         X_visited = np.array(self.gp.X)
-        print("X_visited", X_visited.shape)
-        visited_states = np.ravel_multi_index(X_visited.T, self.grid.shape)
-        new_states_flat = np.setdiff1d(all_states, visited_states, assume_unique=True)
-        new_states = np.unravel_index(new_states_flat, self.grid.shape)
-        new_states = np.array(new_states).T
+        new_states = self.grid.unvisited_states(X_visited)
         new_states = new_states[:, np.newaxis, :]
 
         print("states", new_states.shape)
@@ -93,9 +88,7 @@ if __name__ == "__main__":
     for i in range(100):
         x_next = bo.get_optimal_state(x_next, y)
         print("x_next", x_next)
-        saved_posterior_means.append(
-            (x_next, np.copy(bo.grid_mean), np.copy(grid.grid))
-        )
+        saved_posterior_means.append((x_next, np.copy(bo.grid_mean)))
         y = grid[x_next]
-    ani = HeatmapAnimation(saved_posterior_means)
+    ani = HeatmapAnimation(saved_posterior_means, grid.grid)
     ani.visualize()

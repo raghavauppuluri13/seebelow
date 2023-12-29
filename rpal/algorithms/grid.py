@@ -1,26 +1,11 @@
 from functools import cached_property
-from typing import Tuple, Type, TypeVar
+from typing import Tuple, Type, TypeVar, List
 
 import numpy as np
 import open3d as o3d
 
 from rpal.utils.math_utils import project_axis_to_plane, unit
 from rpal.utils.pcd_utils import visualize_pcds
-
-
-"""
-approximate surface using grid squares
-
-1. build grid_center_pt to pointset map
-2. build pointset to grid_center_pt map
-
-pt_to_idx point
-3. given new point, query kNN on grid_centers to get closest grid square using map
-4. linearly interpolate within grid square to get pt_to_idxd point
-
-idx_to_pt
-1. linearly interpolate within grid square to get unpt_to_idxd point
-"""
 
 
 class Grid:
@@ -38,12 +23,26 @@ class Grid:
         states = states[:, np.newaxis, :]
         return states
 
+    def unvisited_states(self, X_visited: np.ndarray):
+        if len(X_visited) == 0:
+            return self.vectorized_states
+        all_states = self.vectorized_states
+        all_states = np.ravel_multi_index(all_states.T, self.shape)
+        visited_states = np.ravel_multi_index(X_visited.T, self.shape)
+        new_states_flat = np.setdiff1d(all_states, visited_states, assume_unique=True)
+        new_states = np.unravel_index(new_states_flat, self.shape)
+        new_states = np.array(new_states).T
+        return new_states
+
     def __getitem__(self, index):
         r, c = index
         return self.grid[r, c]
 
-    def sample_states_uniform(self):
-        vectorized_states = self.vectorized_states
+    def sample_uniform(self, X_visited=None):
+        if X_visited is not None:
+            vectorized_states = self.unvisited_states(X_visited)
+        else:
+            vectorized_states = self.vectorized_states
         state = vectorized_states[np.random.randint(0, vectorized_states.shape[0])]
         return list(state.flatten())
 
@@ -73,9 +72,12 @@ class GridMap2D(Grid):
 
 
 class SurfaceGridMap(Grid):
-    def __init__(self, pcd, grid_size=0.001, nn=10):
+    def __init__(self, pcd, grid_size=0.001, nn=10, max_r=100, max_c=100):
         self._grid_size = grid_size
         self._nn = nn
+
+        self._max_r = max_r
+        self._max_c = max_c
 
         self._pcd = pcd
         self._pcd.estimate_normals()
@@ -84,37 +86,6 @@ class SurfaceGridMap(Grid):
 
         verts = np.asarray(self._pcd.points)
         norms = np.asarray(self._pcd.normals)
-
-        # generate grid origin
-        vert_center = verts.mean(axis=0)
-        dist_from_center = np.linalg.norm(verts - vert_center, axis=1)
-        corner_pt_idxs = np.argpartition(dist_from_center, -4)[-4:]
-        origin_idx = corner_pt_idxs[0]
-        origin = verts[origin_idx]
-        corners = verts[corner_pt_idxs]
-        vecs = corners[1:] - origin
-
-        # argsort by distance to ensure first two are xaxis and yaxis
-        vecs = vecs[np.argsort(np.linalg.norm(vecs, axis=1))]
-        zaxis_origin = norms[origin_idx]
-
-        # ensure xaxis is orthogonal to zaxis
-        if np.dot(np.cross(vecs[0], vecs[1]), zaxis_origin) > 0:
-            xaxis_origin = vecs[0]
-        else:
-            xaxis_origin = vecs[1]
-        xaxis_origin = project_axis_to_plane(zaxis_origin, xaxis_origin)
-        yaxis_origin = np.cross(zaxis_origin, xaxis_origin)
-
-        self._T = np.eye(4)
-        self._T[:3, :3] = np.hstack(
-            [
-                xaxis_origin[:, np.newaxis],
-                yaxis_origin[:, np.newaxis],
-                zaxis_origin[:, np.newaxis],
-            ]
-        )
-        self._T[:3, 3] = origin
 
         # use surface bounding box to stop grid expansion
         max_p = verts.max(axis=0) + 0.001
@@ -131,14 +102,63 @@ class SurfaceGridMap(Grid):
         )
         self._bbox.color = [1, 0, 0]
 
+        # generate grid rotation mat
+        rot_bbox: o3d.geometry.OrientedBoundingBox = (
+            self._pcd.get_minimal_oriented_bounding_box()
+        )
+        corners = np.asarray(rot_bbox.get_box_points())
+        extent = rot_bbox.extent
+        bbox_origin = corners[0]
+
+        corner_norms = np.linalg.norm(corners - bbox_origin, axis=1)
+
+        bbox_connected_edges = []
+        for i in range(len(extent)):
+            for j in range(len(corner_norms)):
+                if np.allclose(extent[i], corner_norms[j]):
+                    bbox_connected_edges.append(corners[j] - bbox_origin)
+        bbox_connected_edges = np.array(bbox_connected_edges)
+        assert len(bbox_connected_edges) == 3
+        # ASSUMPTION: 2/3 of the connected edges >> the other edge,
+        # and those 2 correspond to the x and y axes of the bbox
+        xyaxis_edges_i = np.argsort(np.linalg.norm(bbox_connected_edges, axis=1))[-2:]
+        xyaxis_edges = bbox_connected_edges[xyaxis_edges_i]
+        xaxis_origin = unit(xyaxis_edges[0])
+        yaxis_origin = unit(xyaxis_edges[1])
+        zaxis_origin = np.cross(xaxis_origin, yaxis_origin)
+
+        dist_from_bbox_origin = np.linalg.norm(verts - bbox_origin, axis=1)
+        grid_origin = verts[np.argmin(dist_from_bbox_origin)]
+        grid_origin_norm = norms[np.argmin(dist_from_bbox_origin)]
+
+        if np.dot(zaxis_origin, grid_origin_norm) < 0:
+            xaxis_origin = unit(xyaxis_edges[1])
+            yaxis_origin = unit(xyaxis_edges[0])
+            zaxis_origin = np.cross(xaxis_origin, yaxis_origin)
+
+        self._T = np.eye(4)
+        self._T[:3, :3] = np.hstack(
+            [
+                xaxis_origin[:, np.newaxis],
+                yaxis_origin[:, np.newaxis],
+                zaxis_origin[:, np.newaxis],
+            ]
+        )
+        self._T[:3, 3] = grid_origin
+
         # cells are defined by their center point, normal vector, and xyz axes
         self._pcd_tree = o3d.geometry.KDTreeFlann(self._pcd)
         self._cells = []
         self.grid_idx2cell_idx = {}
         self.cell_idx2grid_idx = {}
 
+        # visualize_pcds([self._pcd, self._bbox, rot_bbox], tfs=[self._T])
+
         def build_grid(cell_center, grid_idx=(0, 0)):
             if grid_idx in self.grid_idx2cell_idx:
+                return 0
+
+            if grid_idx[0] >= self._max_r or grid_idx[1] >= self._max_c:
                 return 0
 
             inds = self._bbox.get_point_indices_within_bounding_box(
@@ -156,10 +176,10 @@ class SurfaceGridMap(Grid):
                     return 0
 
                 # Offically a grid cell by now
-                # grid_normal = np.mean(norms[inds], axis=0) -> NOTE: not used, creates unwanted artifacts
-                grid_normal = norms[inds[np.argmin(dists)]]
+                grid_normal = np.mean(norms[inds], axis=0)
+                # grid_normal = norms[inds[np.argmin(dists)]]
 
-                xaxis_cell = project_axis_to_plane(grid_normal, xaxis_origin)
+                xaxis_cell = project_axis_to_plane(grid_normal, xaxis_origin.copy())
                 yaxis_cell = np.cross(grid_normal, xaxis_cell)
 
                 new_cell_idx_center_dx = cell_center + xaxis_cell * self._grid_size
@@ -180,7 +200,7 @@ class SurfaceGridMap(Grid):
             else:
                 return 0
 
-        build_grid(origin)
+        build_grid(grid_origin)
 
         idxs = np.asarray(list(self.grid_idx2cell_idx.keys()))
         self._grid_shape = list(np.max(idxs, axis=0))
@@ -226,7 +246,6 @@ class SurfaceGridMap(Grid):
                 )
                 grid_T[:3, 3] = cell_center
                 tfs.append(grid_T)
-
         # original pcd is cyan
         self._pcd.paint_uniform_color([0, 1, 1])
         # generated grid centers are in magenta

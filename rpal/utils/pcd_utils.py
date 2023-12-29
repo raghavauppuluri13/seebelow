@@ -1,5 +1,6 @@
 import numpy as np
 import open3d as o3d
+from rpal.utils.constants import array2constant
 
 
 def stl_to_pcd(stl_path, scale=0.001, transform=np.eye(4), color=[1, 0, 0]):
@@ -67,7 +68,11 @@ def mesh2roi(surface_mesh, bbox_pts=None):
         np.asarray(surface_mesh.vertex_colors)
     )
 
-    bbox = pick_surface_bbox(surface_pcd, bbox_pts=bbox_pts)
+    bbox: o3d.geometry.OrientedBoundingBox = pick_surface_bbox(
+        surface_pcd, bbox_pts=bbox_pts
+    )
+
+    print(array2constant("BBOX_ROI", np.asarray(bbox.get_box_points())))
 
     surface_pcd.estimate_normals()
     surface_pcd.normalize_normals()

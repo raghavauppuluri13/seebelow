@@ -9,33 +9,40 @@ from rpal.algorithms.active_area_search import ActiveAreaSearch
 from rpal.algorithms.bayesian_optimization import BayesianOptimization
 from rpal.algorithms.gp import SquaredExpKernel
 from rpal.algorithms.grid import SurfaceGridMap
+from rpal.algorithms.gui import HeatmapAnimation
 
 
 class GridVisualizer:
-    def __init__(self):
+    def __init__(self, grid):
         self.buffer = []
+        self.grid = grid
 
-    def visualize(self, save=False):
-        ani = HeatmapAnimation(self.buffer)
-        if save:
-            ani.save_animation()
-        else:
-            ani.visualize()
+    def visualize(self, save=False, save_path="gaussian_process.mp4"):
+        ani.visualize()
 
-    def add(self, grid):
-        self.buffer.append(grid)
+    def save(self, save_path="gaussian_process.mp4"):
+        ani.save_animation(save_path)
+
+    def add(self, optimal_state):
+        self.buffer.append((optimal_state, grid.copy()))
 
 
 class RandomSearch:
     def __init__(self, pcd):
-        self.pcd = pcd
         self.grid = SurfaceGridMap(pcd, grid_size=0.001)
-        self.pcd_len = len(np.asarray(pcd.points))
+        self.history = []
+        self.X_visited = []
+        self.next_state = None
+
+    def update_outcome(self, prev_value):
+        assert self.next_state is not None
+        self.grid.grid[self.next_state] = prev_value
 
     def next(self):
-        i = np.random.randint(0, self.pcd_len - 1)
-        pt = self.pcd.points[i]
-        norm = self.pcd.normals[i]
+        self.next_state = self.grid.sample_uniform(X_visited=np.array(self.X_visited))
+        pt, norm = self.grid.idx_to_pt(tuple(self.next_state))
+        self.history.append((self.next_state, self.grid.grid.copy()))
+        self.X_visited.append(self.next_state)
         return (pt, norm)
 
 
@@ -45,14 +52,19 @@ class ActiveSearchAlgos:
 
 
 class ActiveSearch:
-    def __init__(self, pcd: o3d.geometry.PointCloud, algo: ActiveSearchAlgos, **kwargs):
-        self.pcd = pcd
-        self.pcd_len = len(np.asarray(pcd.points))
+    def __init__(
+        self,
+        algo: ActiveSearchAlgos,
+        pcd: o3d.geometry.PointCloud,
+        scale: float,
+        **kwargs
+    ):
         self.grid = SurfaceGridMap(pcd, grid_size=0.001)
-        self.kernel = SquaredExpKernel(scale=kwargs["scale"])
+        self.kernel = SquaredExpKernel(scale=scale)
         self.prev_pt = None
         self.prev_value = None
         self.algo = None
+        self.history = []
 
         if algo is ActiveSearchAlgos.AAS:
             qt_dim = max(self.grid.shape)
@@ -77,15 +89,19 @@ class ActiveSearch:
         else:
             prev_idx = self.grid.pt_to_idx(self.prev_pt)
         optim_idx = self.algo.get_optimal_state(prev_idx, self.prev_value)
+        self.history.append((optim_idx, self.algo.grid_mean.copy()))
         pt, norm = self.grid.idx_to_pt(optim_idx)
         return (pt, norm)
 
 
 if __name__ == "__main__":
-    pts = np.random.uniform(0, 1, size=(100, 3))
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pts)
-    pcd.estimate_normals()
-    planner = Random(pcd)
-    planner_as = ActiveSearch(pcd, ActiveSearchAlgos.BO)
-    print(planner.next())
+    from rpal.utils.constants import *
+    from rpal.utils.pcd_utils import scan2mesh, mesh2roi
+
+    pcd = o3d.io.read_point_cloud(str(SURFACE_SCAN_PATH))
+    surface_mesh = scan2mesh(pcd)
+    roi_pcd = mesh2roi(surface_mesh, bbox_pts=BBOX_ROI)
+    planner = RandomSearch(roi_pcd)
+    print(planner.next())  # TODO: fix this
+    planner_as = ActiveSearch(ActiveSearchAlgos.BO, roi_pcd, 0.1)
+    print(planner_as.next())
