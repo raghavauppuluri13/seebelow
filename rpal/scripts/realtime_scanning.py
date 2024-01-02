@@ -34,6 +34,7 @@ from rpal.utils.transform_utils import euler2mat
 def deoxys_ctrl(shm_posearr_name, stop_event):
     existing_shm = shared_memory.SharedMemory(name=shm_posearr_name)
     O_T_EE_shm = np.ndarray(7, dtype=np.float32, buffer=existing_shm.buf)
+    print(args.interface_cfg)
     robot_interface = FrankaInterface(
         str(RPAL_CFG_PATH / args.interface_cfg), use_visualizer=False, control_freq=20
     )

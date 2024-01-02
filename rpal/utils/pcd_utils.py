@@ -1,6 +1,7 @@
 import numpy as np
 import open3d as o3d
 from rpal.utils.constants import array2constant
+from scipy.spatial.transform import Rotation
 
 
 def stl_to_pcd(stl_path, scale=0.001, transform=np.eye(4), color=[1, 0, 0]):
@@ -213,7 +214,7 @@ def get_centered_bbox(x_pos, x_neg, y_pos, y_neg, z_pos, z_neg):
     return pts
 
 
-def visualize_pcds(pcds, frames=[], tfs=[]):
+def visualize_pcds(pcds, meshes=[], frames=[], tfs=[], surf_norms=[]):
     pts = np.asarray(pcds[0].points)
     lookat_point = pts.mean(axis=0)
 
@@ -225,7 +226,7 @@ def visualize_pcds(pcds, frames=[], tfs=[]):
     for frame in frames:
         pcds.append(
             o3d.geometry.TriangleMesh.create_coordinate_frame(
-                size=0.1, origin=list(frame)  # specify the size of coordinate frame
+                size=0.01, origin=list(frame)  # specify the size of coordinate frame
             )
         )
 
@@ -243,6 +244,27 @@ def visualize_pcds(pcds, frames=[], tfs=[]):
 
     for pcd in pcds:
         vis.add_geometry(pcd)
+
+    for mesh in meshes:
+        vis.add_geometry(mesh)
+
+    for p, normal in surf_norms:
+        arrow: o3d.geometry.TriangleMesh = o3d.geometry.TriangleMesh.create_arrow(
+            cylinder_radius=0.01,
+            cone_radius=0.015,
+            cylinder_height=0.05,
+            cone_height=0.01,
+        )
+        arrow.paint_uniform_color([0.5, 0.5, 0.5])
+        T = np.eye(4)
+        result = Rotation.align_vectors(
+            np.array([normal]),
+            np.array([[0, 0, 1]]),
+        )
+        T[:3, :3] = result[0].as_matrix()
+        T[:3, 3] = p
+        arrow.transform(T)
+        vis.add_geometry(arrow)
 
     ctr = vis.get_view_control()
     lookat_pts = []

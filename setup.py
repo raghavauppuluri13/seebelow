@@ -21,7 +21,6 @@ setup(
         "pyyaml",
         "serial",
         "pyrealsense2",
-        "torch",
         # deoxys
         "setproctitle",
         "easydict",

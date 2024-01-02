@@ -47,7 +47,6 @@ class PalpateState:
 
 
 logger = get_deoxys_example_logger()
-PHANTOM_MESH_PATH = str(RPAL_PKG_PATH / "meshes" / "phantom_mesh.ply")
 np.random.seed(100)
 F_norm_LIMIT = 5.0
 PALP_WRENCH_MAG = 4  # N
@@ -130,7 +129,7 @@ if __name__ == "__main__":
         # the normal vector, and secondly ensure that the y_axis is aligned
         R = Rotation.align_vectors(
             np.array([O_surf_norm_unit, np.array([1, 0, 0])]),
-            np.array([[0, 0, -1], O_xaxis]),
+            np.array([[0, 0, -1], np.array([1, 0, 0])]),
             weights=np.array([1, 0.5]),
         )[0].as_matrix()
 
@@ -210,7 +209,7 @@ if __name__ == "__main__":
                 assert palp_pt is not None
                 stiffness = F_norm / np.linalg.norm(palp_pt - curr_pose_se3.translation)
                 max_stiffness = max(stiffness, max_stiffness)
-                # search.update_outcome(palp_pt, max_stiffness)
+                search.update_outcome(max_stiffness)
 
                 if F_norm > F_norm_LIMIT and not using_force_control:
                     using_force_control = True
@@ -236,7 +235,7 @@ if __name__ == "__main__":
                 assert wrench_unit is not None
                 theta_phi = force_oscill_traj[idx]["position"]
                 R = rot_about_orthogonal_axes(wrench_unit, theta_phi[0], theta_phi[1])
-                # wrench_unit = R @ wrench_unit
+                # wrench_unit = R @ wrench_unit # oscillate
                 assert np.isclose(np.linalg.norm(wrench_unit), 1)
                 action[-3:] = PALP_WRENCH_MAG * wrench_unit
                 print("wrench: ", action[-3:])

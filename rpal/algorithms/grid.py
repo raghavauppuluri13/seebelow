@@ -18,7 +18,6 @@ class Grid:
         gx = np.arange(0, self.grid.shape[0])
         gy = np.arange(0, self.grid.shape[1])
         Xx, Xy = np.meshgrid(gx, gy)
-
         states = np.array([Xx.reshape(-1), Xy.reshape(-1)]).transpose()
         states = states[:, np.newaxis, :]
         return states
@@ -44,7 +43,7 @@ class Grid:
         else:
             vectorized_states = self.vectorized_states
         state = vectorized_states[np.random.randint(0, vectorized_states.shape[0])]
-        return list(state.flatten())
+        return tuple(state.flatten())
 
     @property
     def shape(self):
@@ -176,8 +175,7 @@ class SurfaceGridMap(Grid):
                     return 0
 
                 # Offically a grid cell by now
-                grid_normal = np.mean(norms[inds], axis=0)
-                # grid_normal = norms[inds[np.argmin(dists)]]
+                grid_normal = norms[inds[np.argmin(dists)]]
 
                 xaxis_cell = project_axis_to_plane(grid_normal, xaxis_origin.copy())
                 yaxis_cell = np.cross(grid_normal, xaxis_cell)
@@ -203,7 +201,7 @@ class SurfaceGridMap(Grid):
         build_grid(grid_origin)
 
         idxs = np.asarray(list(self.grid_idx2cell_idx.keys()))
-        self._grid_shape = list(np.max(idxs, axis=0))
+        self._grid_shape = list(np.max(idxs, axis=0) + 1)
         self.grid = np.zeros(self._grid_shape)
 
         self._grid_arr = np.zeros((len(self.grid_idx2cell_idx), 3))
@@ -223,9 +221,9 @@ class SurfaceGridMap(Grid):
     def idx_to_pt(self, idx):
         assert isinstance(idx, tuple)
         cell_idx = self.grid_idx2cell_idx[idx]
-        norm = self._grid_pcd.normals[cell_idx]
-        pt = self._grid_pcd.points[cell_idx]
-        return (pt, norm)
+
+        xaxis, yaxis, zaxis, cell_center = self._cells[cell_idx]
+        return (cell_center, zaxis)
 
     def visualize(self, show_tf=False):
         tfs = []
@@ -251,6 +249,19 @@ class SurfaceGridMap(Grid):
         # generated grid centers are in magenta
         self._grid_pcd.paint_uniform_color([1, 0, 1])
         visualize_pcds([self._grid_pcd, self._pcd, self._bbox], tfs=tfs)
+
+    @cached_property
+    def vectorized_states(self):
+        nx, ny = self.shape
+        gx = np.arange(0, self.grid.shape[0])
+        gy = np.arange(0, self.grid.shape[1])
+        Xx, Xy = np.meshgrid(gx, gy)
+
+        states = np.array([Xx.reshape(-1), Xy.reshape(-1)]).transpose()
+        states = np.array(list(self.grid_idx2cell_idx.keys()))
+        assert np.all(states[:, 0] < nx) and np.all(states[:, 1] < ny)
+        states = states[:, np.newaxis, :]
+        return states
 
     @property
     def shape(self):

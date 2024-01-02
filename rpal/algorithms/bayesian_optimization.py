@@ -1,3 +1,4 @@
+from typing import Tuple
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from scipy.stats import norm
@@ -14,7 +15,7 @@ class BayesianOptimization:
         self.grid_mean = np.zeros(grid.shape)
         self.y_max = None
 
-    def get_optimal_state(self, prev_x_hat: np.ndarray, prev_y: float):
+    def get_optimal_state(self, prev_x_hat: Tuple[float, float], prev_y: float):
         self.y_max = max(self.y_max, prev_y) if self.y_max is not None else prev_y
         print(prev_y)
         self.gp.add_sample(prev_x_hat, prev_y)
@@ -51,7 +52,7 @@ class BayesianOptimization:
         self.grid_mean[new_states[:, 0], new_states[:, 1]] = mean_s.flatten()
         self.grid_mean[X_visited[:, 0], X_visited[:, 1]] = np.array(self.gp.y)
 
-        return list(new_states[idx].flatten())
+        return tuple(new_states[idx].flatten())
 
 
 def add_spots(grid_size, num_spots, spot_intensity, variance):
@@ -83,7 +84,7 @@ if __name__ == "__main__":
     saved_posterior_means = []
 
     # random sample from grid
-    x_next = grid.sample_states_uniform()
+    x_next = grid.sample_uniform()
     y = grid[x_next]
     for i in range(100):
         x_next = bo.get_optimal_state(x_next, y)

@@ -28,6 +28,7 @@ PAN_PAN_FORCE_CFG = "pan-pan-force.yml"
 
 # surface scan
 SURFACE_SCAN_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_12-27-2023_20-16-38.ply"
+GT_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_12-27-2023_19-22-31.ply"
 
 # tumor color thresholding for ground truth collection
 TUMOR_HSV_THRESHOLD = (np.array([80, 136, 3]), np.array([115, 255, 19]))
