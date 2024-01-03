@@ -101,7 +101,7 @@ class DatasetWriter:
 
     def save(self):
         np.save(str(self.timeseries_file), np.array(self.save_buffer))
-        save = input("Save or not? (enter 0 or 1)")
+        save = input(f"Save or not to {str(self.dataset_folder)}? (enter 0 or 1)")
         save = bool(int(save))
         if not save:
             import shutil

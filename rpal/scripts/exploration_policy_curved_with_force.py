@@ -138,102 +138,109 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
     curr_pose_se3.translation = curr_eef_pose[1]
     pose_goal = goals.pop()
     interp.init(curr_pose_se3, pose_goal, steps=STEP_FAST)
-    while not stop_event.is_set():
-        curr_eef_pose = robot_interface.last_eef_rot_and_pos
-        curr_pose_se3.rotation = curr_eef_pose[0]
-        curr_pose_se3.translation = curr_eef_pose[1]
+    try:
+        while not stop_event.is_set():
+            curr_eef_pose = robot_interface.last_eef_rot_and_pos
+            curr_pose_se3.rotation = curr_eef_pose[0]
+            curr_pose_se3.translation = curr_eef_pose[1]
 
-        """
-        print(
-            "rot error: ",
-            np.linalg.norm(interp._goal.rotation - curr_pose_se3.rotation),
-        )
-        print(
-            "translation error: ",
-            np.linalg.norm(interp._goal.translation - curr_pose_se3.translation),
-        )
-        """
-
-        Fxyz_temp = force_cap.read()
-        if Fxyz_temp is not None:
-            Fxyz = Fxyz_temp
-            F_norm = np.sqrt(np.sum(Fxyz**2))
-
-        force_buffer.append(F_norm)
-        if palp_pt is not None:
-            pos_buffer.append(np.linalg.norm(palp_pt - curr_pose_se3.translation))
-
-        if force_buffer.overflowed():
-            running_stats.update(force_buffer.buffer)
-
-        if using_force_control_flag and pos_buffer.std < POS_BUFFER_STABILITY_THRESHOLD:
-            print("FORCE STABLE!")
-            collect_points_flag = False
-            using_force_control_flag = False
-            max_stiffness = -np.inf
-            state_transition()
-            palp_id += 1  # done with palpation
-
-        if len(goals) > 0 and interp.done:
-            state_transition()
-
-        elif len(goals) == 0 and interp.done:
-            palp_pt, surf_normal = search.next()
-            wrench_unit = -surf_normal
-            palpate(palp_pt, surf_normal)
-
-        if palp_state.state == PalpateState.PALPATE:
-            assert palp_pt is not None
-            stiffness = F_norm / np.linalg.norm(palp_pt - curr_pose_se3.translation)
-            max_stiffness = max(stiffness, max_stiffness)
-            search.update_outcome(max_stiffness)
-
-            if F_norm > F_norm_LIMIT and not using_force_control_flag:
-                using_force_control_flag = True
-                collect_points_flag = True
-                oscill_start_time = time.time()
-        if using_force_control_flag:
-            if time.time() - oscill_start_time > T_oscill:
-                oscill_start_time = time.time()
-            idx = int((time.time() - oscill_start_time) / (1 / CTRL_FREQ))
-            action = np.zeros(9)
-            assert wrench_unit is not None
-            theta_phi = force_oscill_traj[idx]["position"]
-            R = rot_about_orthogonal_axes(wrench_unit, theta_phi[0], theta_phi[1])
-            # wrench_unit = R @ wrench_unit # oscillate
-            assert np.isclose(np.linalg.norm(wrench_unit), 1)
-            action[-3:] = PALP_WRENCH_MAG * wrench_unit
-            robot_interface.control(
-                controller_type=RPAL_HYBRID_POSITION_FORCE,
-                action=action,
-                controller_cfg=osc_abs_ctrl_cfg,
+            """
+            print(
+                "rot error: ",
+                np.linalg.norm(interp._goal.rotation - curr_pose_se3.rotation),
             )
-        else:
-            action = np.zeros(7)
-            next_se3_pose = interp.next()
-            xyz_quat = pin.SE3ToXYZQUAT(next_se3_pose)
-            axis_angle = quat2axisangle(xyz_quat[3:7])
-
-            # print(se3_pose)
-            action[:3] = xyz_quat[:3]
-            action[3:6] = axis_angle
-            # print(action)
-
-            robot_interface.control(
-                controller_type=OSC_CTRL_TYPE,
-                action=action,
-                controller_cfg=osc_abs_ctrl_cfg,
+            print(
+                "translation error: ",
+                np.linalg.norm(interp._goal.translation - curr_pose_se3.translation),
             )
-        q, p = robot_interface.last_eef_quat_and_pos
-        data_buffer[0] = (
-            Fxyz,
-            q.flatten(),  # quat
-            p.flatten(),  # pos
-            palp_id,
-            palp_state.state,
-            using_force_control_flag,
-            collect_points_flag,
-        )
+            """
+
+            Fxyz_temp = force_cap.read()
+            if Fxyz_temp is not None:
+                Fxyz = Fxyz_temp
+                F_norm = np.sqrt(np.sum(Fxyz**2))
+
+            force_buffer.append(F_norm)
+            if palp_pt is not None:
+                pos_buffer.append(np.linalg.norm(palp_pt - curr_pose_se3.translation))
+
+            if force_buffer.overflowed():
+                running_stats.update(force_buffer.buffer)
+
+            if (
+                using_force_control_flag
+                and pos_buffer.std < POS_BUFFER_STABILITY_THRESHOLD
+            ):
+                print("FORCE STABLE!")
+                collect_points_flag = False
+                using_force_control_flag = False
+                max_stiffness = -np.inf
+                state_transition()
+                palp_id += 1  # done with palpation
+
+            if len(goals) > 0 and interp.done:
+                state_transition()
+
+            elif len(goals) == 0 and interp.done:
+                palp_pt, surf_normal = search.next()
+                wrench_unit = -surf_normal
+                palpate(palp_pt, surf_normal)
+
+            if palp_state.state == PalpateState.PALPATE:
+                assert palp_pt is not None
+                stiffness = F_norm / np.linalg.norm(palp_pt - curr_pose_se3.translation)
+                max_stiffness = max(stiffness, max_stiffness)
+                search.update_outcome(max_stiffness)
+
+                if F_norm > F_norm_LIMIT and not using_force_control_flag:
+                    using_force_control_flag = True
+                    collect_points_flag = True
+                    oscill_start_time = time.time()
+            if using_force_control_flag:
+                if time.time() - oscill_start_time > T_oscill:
+                    oscill_start_time = time.time()
+                idx = int((time.time() - oscill_start_time) / (1 / CTRL_FREQ))
+                action = np.zeros(9)
+                assert wrench_unit is not None
+                theta_phi = force_oscill_traj[idx]["position"]
+                R = rot_about_orthogonal_axes(wrench_unit, theta_phi[0], theta_phi[1])
+                # wrench_unit = R @ wrench_unit # oscillate
+                assert np.isclose(np.linalg.norm(wrench_unit), 1)
+                action[-3:] = PALP_WRENCH_MAG * wrench_unit
+                robot_interface.control(
+                    controller_type=RPAL_HYBRID_POSITION_FORCE,
+                    action=action,
+                    controller_cfg=osc_abs_ctrl_cfg,
+                )
+            else:
+                action = np.zeros(7)
+                next_se3_pose = interp.next()
+                xyz_quat = pin.SE3ToXYZQUAT(next_se3_pose)
+                axis_angle = quat2axisangle(xyz_quat[3:7])
+
+                # print(se3_pose)
+                action[:3] = xyz_quat[:3]
+                action[3:6] = axis_angle
+                # print(action)
+
+                robot_interface.control(
+                    controller_type=OSC_CTRL_TYPE,
+                    action=action,
+                    controller_cfg=osc_abs_ctrl_cfg,
+                )
+            q, p = robot_interface.last_eef_quat_and_pos
+            data_buffer[0] = (
+                Fxyz,
+                q.flatten(),  # quat
+                p.flatten(),  # pos
+                palp_id,
+                palp_state.state,
+                using_force_control_flag,
+                collect_points_flag,
+            )
+
+    except KeyboardInterrupt:
+        pass
 
     # stop
     robot_interface.close()
@@ -269,7 +276,7 @@ if __name__ == "__main__":
     rtv.set_frame_tf("BASE", np.eye(4))
     rtv.add_frame("EEF", "BASE")
     try:
-        while 1:
+        while True:
             if np.all(data_buffer["O_q_EE"] == 0):
                 # print("Waiting for deoxys...")
                 continue

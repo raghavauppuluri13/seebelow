@@ -79,6 +79,18 @@ BBOX_ROI = np.array(
 STEP_FAST = 200
 STEP_SLOW = 2000
 
+# search
+
+
+def HISTORY_DTYPE(grid_size):
+    return np.dtype(
+        [
+            ("sample_pt", np.dtype((np.int32, 2))),
+            ("grid", np.dtype((np.float32, grid_size))),
+        ]
+    )
+
+
 # palpation
 PALP_DTYPE = np.dtype(
     [

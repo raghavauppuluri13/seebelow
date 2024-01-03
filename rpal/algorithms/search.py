@@ -10,21 +10,7 @@ from rpal.algorithms.bayesian_optimization import BayesianOptimization
 from rpal.algorithms.gp import SquaredExpKernel
 from rpal.algorithms.grid import SurfaceGridMap
 from rpal.algorithms.gui import HeatmapAnimation
-
-
-class GridVisualizer:
-    def __init__(self, grid):
-        self.buffer = []
-        self.grid = grid
-
-    def visualize(self, save=False, save_path="gaussian_process.mp4"):
-        ani.visualize()
-
-    def save(self, save_path="gaussian_process.mp4"):
-        ani.save_animation(save_path)
-
-    def add(self, optimal_state):
-        self.buffer.append((optimal_state, grid.copy()))
+from rpal.utils.constants import HISTORY_DTYPE
 
 
 class Search:
@@ -32,7 +18,7 @@ class Search:
         pass
 
     def save_history(self, folder: Path):
-        np.save(path / "search_history.npy", np.array(self.history))
+        np.save(str(folder / "search_history.npy"), np.array(self.history))
 
 
 class RandomSearch(Search):
@@ -41,6 +27,7 @@ class RandomSearch(Search):
         self.X_visited = []
         self.next_state = None
         self.history = []
+        self.curr_grid = np.zeros(1, dtype=HISTORY_DTYPE(self.grid.shape))
 
     def update_outcome(self, prev_value):
         assert self.next_state is not None
@@ -49,7 +36,8 @@ class RandomSearch(Search):
     def next(self):
         self.next_state = self.grid.sample_uniform(X_visited=np.array(self.X_visited))
         pt, norm = self.grid.idx_to_pt(tuple(self.next_state))
-        self.history.append((self.next_state, self.grid.grid.copy()))
+        self.curr_grid[0] = (np.array(self.next_state), self.grid.grid)
+        self.history.append(self.curr_grid.copy())
 
         self.X_visited.append(self.next_state)
 
@@ -114,9 +102,9 @@ if __name__ == "__main__":
     np.random.seed(100)
     pcd = o3d.io.read_point_cloud(str(SURFACE_SCAN_PATH))
     surface_mesh = scan2mesh(pcd)
-    roi_pcd = mesh2roi(surface_mesh)
+    roi_pcd = mesh2roi(surface_mesh, bbox_pts=BBOX_ROI)
     planner = RandomSearch(roi_pcd, grid_size=0.001)
-    planner.grid.visualize(show_tf=True)
+    # planner.grid.visualize(show_tf=True)
     # planner = ActiveSearch(ActiveSearchAlgos.BO, roi_pcd, 2)
     palp_Ts = []
     surf_norms = []
@@ -137,7 +125,7 @@ if __name__ == "__main__":
         palp_Ts.append(T.copy())
         surf_norms.append(palp)
 
-    ani = HeatmapAnimation(planner.history, planner.history[0][1])
+    ani = HeatmapAnimation(np.array(planner.history))
     ani.visualize()
 
     roi_pcd.paint_uniform_color([1, 0, 0])

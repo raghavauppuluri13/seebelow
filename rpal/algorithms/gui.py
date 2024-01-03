@@ -2,10 +2,11 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
+from rpal.utils.constants import HISTORY_DTYPE
 
 
 class HeatmapAnimation:
-    def __init__(self, data, ground_truth, cmap="hot", interval=200):
+    def __init__(self, data, ground_truth=None, cmap="hot", interval=200):
         """
         data: List of tuples, where each tuple contains two tuples each with
               an 'X' mark position and a 2D numpy array for the heatmap data.
@@ -17,19 +18,28 @@ class HeatmapAnimation:
         self.interval = interval
         self.frames = len(data)
 
+        grid_size = data[0]["grid"].shape[1:]
+        assert data.dtype == HISTORY_DTYPE(grid_size)
         self.ground_truth = ground_truth
 
         # Assuming each frame in data contains two tuples for two heatmaps
-        self.nx, self.ny = data[0][1].shape
+        self.nx, self.ny = grid_size
 
-        self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(10, 5))
+        plots_cnt = 2 if ground_truth is not None else 1
+
+        if self.ground_truth is not None:
+            self.fig, (self.ax1, self.ax2) = plt.subplots(2, plots_cnt, figsize=(10, 5))
+            self.heatmap2 = self.ax2.imshow(
+                np.zeros((self.nx, self.ny)),
+                cmap=self.cmap,
+                interpolation="nearest",
+                aspect="equal",
+            )
+            self.fig.colorbar(self.heatmap2, ax=self.ax2)
+        else:
+            self.fig, self.ax1 = plt.subplots(1, plots_cnt, figsize=(10, 5))
+
         self.heatmap1 = self.ax1.imshow(
-            np.zeros((self.nx, self.ny)),
-            cmap=self.cmap,
-            interpolation="nearest",
-            aspect="equal",
-        )
-        self.heatmap2 = self.ax2.imshow(
             np.zeros((self.nx, self.ny)),
             cmap=self.cmap,
             interpolation="nearest",
@@ -38,10 +48,9 @@ class HeatmapAnimation:
 
         # Add color bar for the heatmaps
         self.fig.colorbar(self.heatmap1, ax=self.ax1)
-        self.fig.colorbar(self.heatmap2, ax=self.ax2)
 
         # Initialize the markers for the 'X' marks
-        init_mark1 = data[0][0]
+        init_mark1 = data[0]["sample_pt"].flatten()
         (self.x_mark1,) = self.ax1.plot(
             init_mark1[1], init_mark1[0], "wx", markersize=10
         )
@@ -53,22 +62,26 @@ class HeatmapAnimation:
 
     def update(self, frame):
         """Update function for animation."""
-        next_mark1, data_frame1 = self.data[frame]
+        data_frame1 = self.data[frame]["grid"][0]
+        next_mark1 = self.data[frame]["sample_pt"].flatten()
 
         # Update the data for both heatmaps
         self.heatmap1.set_data(data_frame1)
-        self.heatmap2.set_data(self.ground_truth)
 
         # Update the positions of the 'X' marks
         self.x_mark1.set_data(next_mark1[1], next_mark1[0])
 
         # Update color limits for both heatmaps
         self.heatmap1.set_clim(vmin=np.min(data_frame1), vmax=np.max(data_frame1))
-        self.heatmap2.set_clim(
-            vmin=np.min(self.ground_truth), vmax=np.max(self.ground_truth)
-        )
 
-        return self.heatmap1, self.x_mark1, self.heatmap2
+        if self.ground_truth is not None:
+            self.heatmap2.set_clim(
+                vmin=np.min(self.ground_truth), vmax=np.max(self.ground_truth)
+            )
+            self.heatmap2.set_data(self.ground_truth)
+            return self.heatmap1, self.x_mark1, self.heatmap2
+
+        return self.heatmap1, self.x_mark1
 
     def visualize(self):
         """Visualize the animation."""
