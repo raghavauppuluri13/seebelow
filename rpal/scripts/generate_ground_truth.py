@@ -40,7 +40,7 @@ def deoxys_ctrl(shm_posearr_name, stop_event):
     existing_shm = shared_memory.SharedMemory(name=shm_posearr_name)
     O_T_EE_posquat_shm = np.ndarray(7, dtype=np.float32, buffer=existing_shm.buf)
     robot_interface = FrankaInterface(
-        str(RPAL_CFG_PATH / PAN_PAN_FORCE_CFG), use_visualizer=False, control_freq=20
+        str(RPAL_CFG_PATH / PAN_PAN_FORCE_CFG), use_visualizer=False, control_freq=80
     )
 
     osc_absolute_ctrl_cfg = YamlConfig(

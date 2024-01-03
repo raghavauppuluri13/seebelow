@@ -27,12 +27,20 @@ class GridVisualizer:
         self.buffer.append((optimal_state, grid.copy()))
 
 
-class RandomSearch:
+class Search:
+    def __init__(self):
+        pass
+
+    def save_history(self, folder: Path):
+        np.save(path / "search_history.npy", np.array(self.history))
+
+
+class RandomSearch(Search):
     def __init__(self, pcd, grid_size=0.005):
         self.grid = SurfaceGridMap(pcd, grid_size=grid_size)
-        self.history = []
         self.X_visited = []
         self.next_state = None
+        self.history = []
 
     def update_outcome(self, prev_value):
         assert self.next_state is not None
@@ -53,7 +61,7 @@ class ActiveSearchAlgos:
     BO = 2
 
 
-class ActiveSearch:
+class ActiveSearch(Search):
     def __init__(
         self,
         algo: ActiveSearchAlgos,
@@ -100,7 +108,6 @@ class ActiveSearch:
 if __name__ == "__main__":
     from rpal.utils.constants import *
     from rpal.utils.pcd_utils import scan2mesh, mesh2roi, visualize_pcds
-    from rpal.utils.useful_poses import O_T_CAM, O_xaxis
     from rpal.utils.transform_utils import quat2mat
     from scipy.spatial.transform import Rotation
 

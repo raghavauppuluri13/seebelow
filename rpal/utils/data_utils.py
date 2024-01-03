@@ -62,24 +62,18 @@ class Buffer:
 
 
 class DatasetWriter:
-    def __init__(self, cfg_args, record_pcd=True, print_hz=True):
+    def __init__(self, cfg_args=None, print_hz=True):
         import datetime
-        from rpal.utils.devices import RealsenseCapture
+        from rpal.utils.constants import RPAL_DATA_PATH
         from pathlib import Path
         import os
-        import threading
-
-        self.record_pcd = record_pcd
-
-        self.stop_event = threading.Event()
 
         self.hz = Hz(print_hz=print_hz)
         self.save_buffer = []
         self.i = 0
 
-        data_dir = Path("./data")
         # Create dataset folders
-        self.dataset_folder = data_dir / datetime.datetime.now().strftime(
+        self.dataset_folder = RPAL_DATA_PATH / datetime.datetime.now().strftime(
             "dataset_%m-%d-%Y_%H-%M-%S"
         )
         self.raw_pcd_dir = self.dataset_folder / "raw_pcd"
@@ -87,20 +81,11 @@ class DatasetWriter:
         self.reconstruction_file = self.dataset_folder / "reconstruction.ply"
         self.reconstruction_raw = self.dataset_folder / "reconstruction.txt"
         self.surface_pcd = self.dataset_folder / "surface.ply"
-        self.search_anim = self.dataset_folder / "search_animation.mp4"
         os.mkdir(self.dataset_folder)
 
-        if self.record_pcd:
-            os.mkdir(self.raw_pcd_dir)
-            self.pcd_thread.start()
-            self.rs_cap = RealsenseCapture()
-            self.pcd_buffer = Buffer(10)
-            self.pcd_thread = threading.Thread(
-                target=thread_read, args=(self.pcd_buffer, self.rs_cap, self.stop_event)
-            )
-
-        with open(str(self.dataset_folder / "config.yml"), "w") as outfile:
-            yaml.dump(vars(cfg_args), outfile, default_flow_style=False)
+        if cfg_args is not None:
+            with open(str(self.dataset_folder / "config.yml"), "w") as outfile:
+                yaml.dump(vars(cfg_args), outfile, default_flow_style=False)
 
     def save_subsurface_pcd(self, pts):
         subsurface_pcd = o3d.geometry.PointCloud()
@@ -111,36 +96,20 @@ class DatasetWriter:
 
         np.savetxt(str(self.reconstruction_raw), pts, fmt="%1.8f")
 
-    def save_cropped_surface_pcd(self, pcd):
+    def save_roi_pcd(self, pcd):
         o3d.io.write_point_cloud(str(self.surface_pcd.absolute()), pcd)
 
     def save(self):
-        self.stop_event.set()
-        if self.record_pcd:
-            self.pcd_thread.join()
-
-        np.savetxt(str(self.timeseries_file), self.save_buffer, fmt="%1.8f")
-
+        np.save(str(self.timeseries_file), np.array(self.save_buffer))
         save = input("Save or not? (enter 0 or 1)")
         save = bool(int(save))
-
         if not save:
             import shutil
 
             shutil.rmtree(f"{str(self.dataset_folder)}")
 
-    def update(self, d_eef_pos_quat, Fxyz):
-        if self.record_pcd:
-            pcd = self.pcd_buffer.get()
-        if Fxyz is not None:
-            self.hz.clock()
-            x = np.zeros(10)  # (x,y,z,x,y,z,w,fx,fy,fz)
-            x[:3] = d_eef_pos_quat[1].flatten()
-            x[3:7] = d_eef_pos_quat[0].flatten()
-            x[7:10] = Fxyz
-            self.save_buffer.append(x)
-            if self.record_pcd:
-                o3d.io.write_point_cloud(
-                    str((self.raw_pcd_dir / f"{self.i}.ply").absolute()), pcd
-                )
-            self.i += 1
+    def add_sample(self, sample):
+        from rpal.utils.constants import PALP_DTYPE
+
+        assert sample.dtype == PALP_DTYPE
+        self.save_buffer.append(sample)

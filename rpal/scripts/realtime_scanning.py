@@ -36,7 +36,7 @@ def deoxys_ctrl(shm_posearr_name, stop_event):
     O_T_EE_shm = np.ndarray(7, dtype=np.float32, buffer=existing_shm.buf)
     print(args.interface_cfg)
     robot_interface = FrankaInterface(
-        str(RPAL_CFG_PATH / args.interface_cfg), use_visualizer=False, control_freq=20
+        str(RPAL_CFG_PATH / PAN_PAN_FORCE_CFG), use_visualizer=False, control_freq=20
     )
 
     osc_delta_ctrl_cfg = YamlConfig(str(RPAL_CFG_PATH / OSC_DELTA_CFG)).as_easydict()
@@ -107,14 +107,6 @@ if __name__ == "__main__":
 
     rk = Ratekeeper(30)
 
-    vis = o3d.visualization.Visualizer()
-    f = o3d.geometry.TriangleMesh.create_coordinate_frame(
-        size=0.1  # specify the size of coordinate frame
-    )
-
-    vis.create_window()
-    vis.add_geometry(pcd)
-
     rtv = RealtimeVisualizer()
     rtv.add_frame("BASE")
     rtv.set_frame_tf("BASE", np.eye(4))
@@ -130,29 +122,16 @@ if __name__ == "__main__":
             if np.all(O_T_EE == 0):
                 print("Waiting for pose...")
                 continue
-            im, new_pcd = rs.read()
-
+            # im, new_pcd = rs.read()
             ee_pos = np.array(O_T_EE[:3])
             ee_rot = quat2mat(O_T_EE[3:7])
             O_T_E = np.eye(4)
             O_T_E[:3, :3] = ee_rot
             O_T_E[:3, 3] = ee_pos
-
             O_T_C = O_T_E @ E_T_C
-
             rtv.set_frame_tf("EEF", O_T_E)
             rtv.set_frame_tf("CAM", E_T_C)
-
             rk.keep_time()
-
-            new_pcd.transform(O_T_C)
-
-            pcd.points = new_pcd.points
-            pcd.colors = new_pcd.colors
-
-            vis.update_geometry(pcd)
-            vis.poll_events()
-            vis.update_renderer()
     except KeyboardInterrupt:
         pass
     stop_event.set()

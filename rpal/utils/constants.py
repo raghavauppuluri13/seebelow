@@ -15,6 +15,7 @@ SPACEM_PRODUCT_ID = 50741
 RPAL_PKG_PATH = Path(rpal.__file__).parent.absolute()
 RPAL_CFG_PATH = Path(rpal.__file__).parent.absolute() / "config"
 RPAL_MESH_PATH = Path(rpal.__file__).parent.absolute() / "meshes"
+RPAL_DATA_PATH = Path(rpal.__file__).parent.absolute() / "data"
 RPAL_CKPT_PATH = Path(rpal.__file__).parent.absolute() / ".ckpts"
 
 # controllers
@@ -29,6 +30,7 @@ PAN_PAN_FORCE_CFG = "pan-pan-force.yml"
 # surface scan
 SURFACE_SCAN_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_12-27-2023_20-16-38.ply"
 GT_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_12-27-2023_19-22-31.ply"
+
 
 # tumor color thresholding for ground truth collection
 TUMOR_HSV_THRESHOLD = (np.array([80, 136, 3]), np.array([115, 255, 19]))
@@ -76,3 +78,43 @@ BBOX_ROI = np.array(
 # interpolation
 STEP_FAST = 100
 STEP_SLOW = 2000
+
+# palpation
+PALP_DTYPE = np.dtype(
+    [
+        ("Fxyz", np.dtype((np.float32, (3)))),
+        ("O_q_EE", np.dtype((np.float32, (4)))),
+        ("O_p_EE", np.dtype((np.float32, (3)))),
+        ("palp_id", np.int64),
+        ("palp_state", np.int8),
+        ("using_force_control_flag", np.int8),
+        ("collect_points_flag", np.int8),
+    ]
+)
+
+F_norm_LIMIT = 5.0
+PALP_WRENCH_MAG = 4  # N
+BUFFER_SIZE = 100
+DATASET_BUFFER_SIZE = 100
+FORCE_BUFFER_STABILITY_THRESHOLD = 0.05  # N
+POS_BUFFER_STABILITY_THRESHOLD = 1e-4  # m
+ABOVE_HEIGHT = 0.02
+PALPATE_DEPTH = 0.035
+WRENCH_OSCILL_FREQ = 100
+SEED = 100
+T_oscill = 2  # oscillation period (s)
+CTRL_FREQ = 100
+OSCILL_ANGLE = 10  # deg
+
+BBOX_DOCTOR_ROI = np.array(
+    [
+        [0.548153139174615, -0.008732814440511275, 0.5863492023312757],
+        [0.5482251892809066, -0.008733453524682347, -0.4187626842806253],
+        [0.5327764686331437, -0.009876358127164728, 0.5863481008022411],
+        [0.5471770428102752, 0.004392274240072257, 0.5863491240157328],
+        [0.5318724223750956, 0.0032480914692477334, -0.4187638641252031],
+        [0.531800372268804, 0.0032487305534188047, 0.5863480224866982],
+        [0.5472490929165669, 0.004391635155901186, -0.41876276259616835],
+        [0.5328485187394353, -0.009876997211335798, -0.41876378580966006],
+    ]
+)

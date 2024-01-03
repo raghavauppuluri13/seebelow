@@ -43,12 +43,15 @@ class RunningStats:
 class RingBuffer:
     """Ring buffer for normalizing and debouncing sensor values"""
 
-    def __init__(self, capacity, stability_threshold=0.01):
-        self._capacity = capacity
-        self._buffer = np.empty(capacity, dtype=float)
+    def __init__(self, capacity, buffer=None, dtype=float):
+        if buffer is None:
+            self._capacity = capacity
+            self._buffer = np.empty(capacity, dtype=dtype)
+        else:
+            self._buffer = buffer
+            self._capacity = len(self._buffer)
         self._index = 0
         self._initialized = False
-        self._stability_threshold = stability_threshold
 
     def append(self, value):
         self._buffer[self._index] = value
@@ -56,22 +59,15 @@ class RingBuffer:
         if self._index == 0:
             self._initialized = True
 
-    def get(self, normalized=True):
-        value = None
-        if self._initialized:
-            value = np.roll(self._buffer, -self._index)
-        else:
-            value = self._buffer[: self._index]
-        return value
+    def get(self):
+        return self._buffer[: self._index]
 
     def overflowed(self):
         return self._index == 0 and self._initialized
 
     @property
-    def is_stable(self):
-        if self._initialized:
-            return np.std(self._buffer) < self._stability_threshold
-        return False
+    def std(self):
+        return np.std(self._buffer)
 
     @property
     def buffer(self):
