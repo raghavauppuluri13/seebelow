@@ -236,8 +236,8 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
         )
 
     # stop
-    search.save_history(save_folder)
     robot_interface.close()
+    search.save_history(save_folder)
     existing_shm.close()
 
 
@@ -292,11 +292,14 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         pass
     stop_event.set()
-    ctrl_process.join()
     print("CTRL STOPPED!")
 
     dataset_writer.save_subsurface_pcd(np.array(subsurface_pts).squeeze())
     dataset_writer.save_roi_pcd(roi_pcd)
     dataset_writer.save()
+
+    while ctrl_process.is_alive():
+        continue
+    ctrl_process.join()
     shm.close()
     shm.unlink()

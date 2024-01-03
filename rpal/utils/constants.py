@@ -76,7 +76,7 @@ BBOX_ROI = np.array(
 
 
 # interpolation
-STEP_FAST = 100
+STEP_FAST = 200
 STEP_SLOW = 2000
 
 # palpation

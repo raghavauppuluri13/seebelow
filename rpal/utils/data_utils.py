@@ -77,7 +77,7 @@ class DatasetWriter:
             "dataset_%m-%d-%Y_%H-%M-%S"
         )
         self.raw_pcd_dir = self.dataset_folder / "raw_pcd"
-        self.timeseries_file = self.dataset_folder / "timeseries.txt"
+        self.timeseries_file = self.dataset_folder / "timeseries.npy"
         self.reconstruction_file = self.dataset_folder / "reconstruction.ply"
         self.reconstruction_raw = self.dataset_folder / "reconstruction.txt"
         self.surface_pcd = self.dataset_folder / "surface.ply"
