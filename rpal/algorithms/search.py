@@ -27,7 +27,6 @@ class RandomSearch(Search):
         self.X_visited = []
         self.next_state = None
         self.history = []
-        self.curr_grid = np.zeros(1, dtype=HISTORY_DTYPE(self.grid.shape))
 
     def update_outcome(self, prev_value):
         assert self.next_state is not None
@@ -36,8 +35,11 @@ class RandomSearch(Search):
     def next(self):
         self.next_state = self.grid.sample_uniform(X_visited=np.array(self.X_visited))
         pt, norm = self.grid.idx_to_pt(tuple(self.next_state))
-        self.curr_grid[0] = (np.array(self.next_state), self.grid.grid)
-        self.history.append(self.curr_grid.copy())
+        curr_grid = np.array(
+            (np.array(self.next_state), self.grid.grid),
+            dtype=HISTORY_DTYPE(self.grid.shape),
+        )
+        self.history.append(curr_grid)
 
         self.X_visited.append(self.next_state)
 
@@ -84,8 +86,13 @@ class ActiveSearch(Search):
         else:
             optim_idx = self.algo.get_optimal_state(self.prev_idx, self.prev_value)
         self.prev_idx = optim_idx
-        self.history.append((optim_idx, self.algo.grid_mean.copy()))
         pt, norm = self.grid.idx_to_pt(optim_idx)
+
+        curr_grid = np.array(
+            (np.array(optim_idx), self.algo.grid_mean),
+            dtype=HISTORY_DTYPE(self.grid.shape),
+        )
+        self.history.append(curr_grid)
         return (pt, norm)
 
     def update_outcome(self, val: float):
@@ -105,7 +112,7 @@ if __name__ == "__main__":
     roi_pcd = mesh2roi(surface_mesh, bbox_pts=BBOX_ROI)
     planner = RandomSearch(roi_pcd, grid_size=0.001)
     # planner.grid.visualize(show_tf=True)
-    # planner = ActiveSearch(ActiveSearchAlgos.BO, roi_pcd, 2)
+    planner = ActiveSearch(ActiveSearchAlgos.BO, roi_pcd, scale=2.0)
     palp_Ts = []
     surf_norms = []
     for i in range(100):

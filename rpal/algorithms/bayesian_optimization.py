@@ -6,6 +6,7 @@ from scipy.stats import norm
 from rpal.algorithms.gp import GP, SquaredExpKernel
 from rpal.algorithms.grid import Grid, GridMap2D, SurfaceGridMap
 from rpal.algorithms.gui import HeatmapAnimation
+from rpal.utils.constants import HISTORY_DTYPE
 
 
 class BayesianOptimization:
@@ -75,10 +76,11 @@ if __name__ == "__main__":
     grid = GridMap2D(*grid_size)
     spots = add_spots(grid_size, 1, 10, 3.0)
     grid.grid = spots
-    # grid.grid += np.random.normal(0, 0.01, grid_size)
-    # grid.grid[grid.grid < 0] = 0
-
-    kernel = SquaredExpKernel(scale=1)
+    grid.grid += np.random.normal(0, 0.01, grid_size)
+    grid.grid[grid.grid < 0] = 0
+    grid.grid[grid.grid > 10] = 10
+    grid.grid = grid.grid / grid.grid.max()  # Normalize
+    kernel = SquaredExpKernel(scale=2)
     bo = BayesianOptimization(grid, kernel)
 
     saved_posterior_means = []
@@ -88,8 +90,11 @@ if __name__ == "__main__":
     y = grid[x_next]
     for i in range(100):
         x_next = bo.get_optimal_state(x_next, y)
-        print("x_next", x_next)
-        saved_posterior_means.append((x_next, np.copy(bo.grid_mean)))
+        saved_posterior_means.append(
+            np.array(
+                (np.array(x_next), bo.grid_mean.copy()), dtype=HISTORY_DTYPE(grid_size)
+            )
+        )
         y = grid[x_next]
-    ani = HeatmapAnimation(saved_posterior_means, grid.grid)
+    ani = HeatmapAnimation(np.array(saved_posterior_means), ground_truth=grid.grid)
     ani.visualize()

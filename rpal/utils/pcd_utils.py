@@ -214,7 +214,7 @@ def get_centered_bbox(x_pos, x_neg, y_pos, y_neg, z_pos, z_neg):
     return pts
 
 
-def visualize_pcds(pcds, meshes=[], frames=[], tfs=[], surf_norms=[]):
+def visualize_pcds(pcds, meshes=[], frames=[], tfs=[], surf_norms=[], tf_size=0.1):
     pts = np.asarray(pcds[0].points)
     lookat_point = pts.mean(axis=0)
 
@@ -226,13 +226,13 @@ def visualize_pcds(pcds, meshes=[], frames=[], tfs=[], surf_norms=[]):
     for frame in frames:
         pcds.append(
             o3d.geometry.TriangleMesh.create_coordinate_frame(
-                size=0.01, origin=list(frame)  # specify the size of coordinate frame
+                size=tf_size, origin=list(frame)  # specify the size of coordinate frame
             )
         )
 
     for tf in tfs:
         f = o3d.geometry.TriangleMesh.create_coordinate_frame(
-            size=0.1  # specify the size of coordinate frame
+            size=tf_size  # specify the size of coordinate frame
         )
         f.transform(tf)
         pcds.append(f)

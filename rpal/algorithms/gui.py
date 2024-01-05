@@ -18,8 +18,10 @@ class HeatmapAnimation:
         self.interval = interval
         self.frames = len(data)
 
-        grid_size = data[0]["grid"].shape[1:]
-        assert data.dtype == HISTORY_DTYPE(grid_size)
+        grid_size = data[0]["grid"].shape
+        assert data.dtype == HISTORY_DTYPE(grid_size), print(
+            data.dtype, "!=", HISTORY_DTYPE(grid_size)
+        )
         self.ground_truth = ground_truth
 
         # Assuming each frame in data contains two tuples for two heatmaps
@@ -28,7 +30,8 @@ class HeatmapAnimation:
         plots_cnt = 2 if ground_truth is not None else 1
 
         if self.ground_truth is not None:
-            self.fig, (self.ax1, self.ax2) = plt.subplots(2, plots_cnt, figsize=(10, 5))
+            assert ground_truth.shape == grid_size
+            self.fig, (self.ax1, self.ax2) = plt.subplots(1, plots_cnt, figsize=(10, 5))
             self.heatmap2 = self.ax2.imshow(
                 np.zeros((self.nx, self.ny)),
                 cmap=self.cmap,
@@ -50,7 +53,7 @@ class HeatmapAnimation:
         self.fig.colorbar(self.heatmap1, ax=self.ax1)
 
         # Initialize the markers for the 'X' marks
-        init_mark1 = data[0]["sample_pt"].flatten()
+        init_mark1 = data[0]["sample_pt"]
         (self.x_mark1,) = self.ax1.plot(
             init_mark1[1], init_mark1[0], "wx", markersize=10
         )
@@ -62,8 +65,8 @@ class HeatmapAnimation:
 
     def update(self, frame):
         """Update function for animation."""
-        data_frame1 = self.data[frame]["grid"][0]
-        next_mark1 = self.data[frame]["sample_pt"].flatten()
+        data_frame1 = self.data[frame]["grid"]
+        next_mark1 = self.data[frame]["sample_pt"]
 
         # Update the data for both heatmaps
         self.heatmap1.set_data(data_frame1)
