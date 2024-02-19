@@ -29,68 +29,57 @@ class SquaredExpKernel:
         return K
 
 
-class GP:
-    def __init__(self, kernel, noise_var=0.01):
-        self.kernel = kernel
-        self.noise_var = noise_var
-        self.X = []
-        self.y = []
+def gp_posterior(X_s: np.ndarray, X, y, kernel, noise_var=0.01):
+    """
+    Computes posterior of p(f(X_s) | f(self.X))
+    X_star: np.ndarray (N, 2)
+    X: np.ndarray (N, 2)
+    y: np.ndarray (N, 1)
+    kernel: SquaredExpKernel
+    noise_var: float
+    """
+    y = y[:, np.newaxis]
 
-    def add_sample(self, x: Tuple[float, float], y: float):
-        assert isinstance(y, float), print(y)
-        self.X.append(x)
-        self.y.append(y)
+    # print("X", X.shape)
+    # print("X_s", X_s.shape)
+    # print("y", y.shape)
 
-    def posterior(self, X_s: np.ndarray):
-        """
-        Computes posterior of p(f(X_s) | f(self.X))
-        X_star: np.ndarray (N, 2)
-        """
+    K = kernel.cov(X)
+    # print("K", K)
 
-        X = np.array(self.X)
-        y = np.array(self.y)
-        y = y[:, np.newaxis]
+    # print("X_s", X_s.shape)
+    K_s_x = kernel(X_s, X)
+    K_s_x = K_s_x[..., np.newaxis]
+    # print("K_s_x", K_s_x.shape)
 
-        # print("X", X.shape)
-        # print("y", y.shape)
+    beta = np.einsum("ijk,jj->ijk", K_s_x, np.linalg.inv(K))
+    # print("beta", beta.shape)
 
-        K = self.kernel.cov(X)
-        # print("K", K)
+    k_ss = kernel(X_s, X_s)
+    # print("k_ss", k_ss.shape)
 
-        # print("X_s", X_s.shape)
-        K_s_x = self.kernel(X_s, X)
-        K_s_x = K_s_x[..., np.newaxis]
-        # print("K_s_x", K_s_x.shape)
+    # these are dot products
+    posterior_mean = np.einsum("ijk,jk->ik", beta, y)
+    posterior_std = k_ss + np.einsum("ijk,ijk->ik", beta, K_s_x)
 
-        beta = np.einsum("ijk,jj->ijk", K_s_x, np.linalg.inv(K))
-        # print("beta", beta.shape)
-
-        k_ss = self.kernel(X_s, X_s)
-        # print("k_ss", k_ss.shape)
-
-        # these are dot products
-        posterior_mean = np.einsum("ijk,jk->ik", beta, y)
-        posterior_std = k_ss + np.einsum("ijk,ijk->ik", beta, K_s_x)
-
-        # print("posterior_mean", posterior_mean.shape)
-        # print("posterior_std", posterior_std.shape)
-        return posterior_mean, posterior_std
+    # print("posterior_mean", posterior_mean.shape)
+    # print("posterior_std", posterior_std.shape)
+    return posterior_mean, posterior_std
 
 
 if __name__ == "__main__":
     kernel = SquaredExpKernel(scale=0.5)
 
-    gp = GP(kernel, noise_var=0)
+    obs = np.array(
+        [
+            (0, 0, 1),
+            (0, 8, 1),
+            (8, 0, 2),
+            (8, 8, 1),
+        ]
+    )
 
-    obs = [
-        ((0, 0), 1),
-        ((0, 8), 1),
-        ((8, 0), 2),
-        ((8, 8), 1),
-    ]
-
-    for x, y in obs:
-        gp.add_sample(x, y)
+    print(obs.shape)
 
     import matplotlib.pyplot as plt
 
@@ -98,9 +87,9 @@ if __name__ == "__main__":
     X_s = grid.vectorized_states
     # print("X_s", X_s.shape)
     # permuations via numpy between 0,0 and 10,10
-    Mu_s = gp.posterior_mean(X_s)
+    mu, std = gp_posterior(X_s, obs[:, :2], obs[:, -1], kernel)
     # print("Mu_s", Mu_s.shape)
 
-    plt.imshow(Mu_s.reshape(grid_shape), cmap="hot", interpolation="bilinear")
+    plt.imshow(mu.reshape(grid.shape), cmap="hot", interpolation="bilinear")
     plt.colorbar()
     plt.show()

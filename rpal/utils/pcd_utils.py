@@ -4,6 +4,18 @@ from rpal.utils.constants import array2constant
 from scipy.spatial.transform import Rotation
 
 
+def sample_pcd_on_disk_xy(N, r):
+    # Generate N uniformly distributed angles
+    angles = 2 * np.pi * np.random.rand(N)
+    # Generate N uniformly distributed radii
+    radii = np.sqrt(np.random.rand(N))
+    # Calculate the coordinates of the points
+    pts = np.zeros(N, 3)
+    pts[0] = r * radii * np.cos(angles)
+    pts[1] = r * radii * np.sin(angles)
+    return pts
+
+
 def stl_to_pcd(stl_path, scale=0.001, transform=np.eye(4), color=[1, 0, 0]):
     gt_mesh = o3d.io.read_triangle_mesh(stl_path)
     verts = np.asarray(gt_mesh.vertices)
@@ -170,6 +182,7 @@ def pick_surface_bbox(pcd, bbox_pts=None):
     bbox = o3d.geometry.OrientedBoundingBox.create_from_points(
         o3d.utility.Vector3dVector(bbox_pts)
     )
+    print(array2constant("BBOX_ROI", np.asarray(bbox.get_box_points())))
     return bbox
 
 

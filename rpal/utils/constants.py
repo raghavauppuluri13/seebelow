@@ -18,23 +18,26 @@ RPAL_MESH_PATH = Path(rpal.__file__).parent.absolute() / "meshes"
 RPAL_DATA_PATH = Path(rpal.__file__).parent.absolute() / "data"
 RPAL_CKPT_PATH = Path(rpal.__file__).parent.absolute() / ".ckpts"
 
-# controllers
-RPAL_HYBRID_POSITION_FORCE = "RPAL_HYBRID_POSITION_FORCE"
+# camera calibration
+
+CAMERA_CALIB_FOLDER = RPAL_CFG_PATH / "camera_calibration_12-16-2023_14-48-12"
+
+# deoxys controllers
 OSC_CTRL_TYPE = "OSC_POSE"
-OSC_DELTA_CFG = "osc-pose-controller-delta.yml"
-OSC_ABSOLUTE_CFG = "osc-pose-controller.yml"
-JNT_POSITION_CFG = "joint-position-controller.yml"
+FORCE_CTRL_TYPE = "RPAL_HYBRID_POSITION_FORCE"
+OSC_DELTA_CFG = RPAL_CFG_PATH / "osc-pose-controller-delta.yml"
+OSC_ABSOLUTE_CFG = RPAL_CFG_PATH / "osc-pose-controller.yml"
+JNT_POSITION_CFG = RPAL_CFG_PATH / "joint-position-controller.yml"
 BASE_CALIB_FOLDER = RPAL_CFG_PATH / "base_camera_calib"
-PAN_PAN_FORCE_CFG = "pan-pan-force.yml"
+PAN_PAN_FORCE_CFG = RPAL_CFG_PATH / "pan-pan-force.yml"
 
 # surface scan
-SURFACE_SCAN_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_12-27-2023_20-16-38.ply"
+SURFACE_SCAN_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_01-05-2024_12-48-52.ply"
 GT_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_12-27-2023_19-22-31.ply"
 
 
 # tumor color thresholding for ground truth collection
 TUMOR_HSV_THRESHOLD = (np.array([80, 136, 3]), np.array([115, 255, 19]))
-
 BBOX_PHANTOM = np.array(
     [
         [0.501941544576342, -0.05161805081947522, 0.5774690032616651],
@@ -60,6 +63,18 @@ GT_SCAN_POSE = np.array(
     ]
 )
 
+RESET_PALP_POSE = np.array(
+    [
+        0.5174325704574585,
+        -0.0029695522971451283,
+        0.12471308946609497,
+        -0.929806649684906,
+        0.36692020297050476,
+        -0.025555845350027084,
+        0.01326837856322527,
+    ]
+)
+
 
 BBOX_ROI = np.array(
     [
@@ -76,7 +91,7 @@ BBOX_ROI = np.array(
 
 
 # interpolation
-STEP_FAST = 200
+STEP_FAST = 250
 STEP_SLOW = 2000
 
 # search
@@ -97,36 +112,46 @@ PALP_DTYPE = np.dtype(
         ("Fxyz", np.dtype((np.float32, (3)))),
         ("O_q_EE", np.dtype((np.float32, (4)))),
         ("O_p_EE", np.dtype((np.float32, (3)))),
+        ("O_q_EE_target", np.dtype((np.float32, (4)))),
+        ("O_p_EE_target", np.dtype((np.float32, (3)))),
         ("palp_id", np.int64),
         ("palp_state", np.int8),
+        ("stiffness", np.float32),
         ("using_force_control_flag", np.int8),
         ("collect_points_flag", np.int8),
     ]
 )
 
-F_norm_LIMIT = 5.0
-PALP_WRENCH_MAG = 4  # N
-BUFFER_SIZE = 100
-DATASET_BUFFER_SIZE = 100
-FORCE_BUFFER_STABILITY_THRESHOLD = 0.05  # N
-POS_BUFFER_STABILITY_THRESHOLD = 1e-4  # m
-ABOVE_HEIGHT = 0.02
-PALPATE_DEPTH = 0.035
-WRENCH_OSCILL_FREQ = 100
-SEED = 100
-T_oscill = 2  # oscillation period (s)
-CTRL_FREQ = 100
-OSCILL_ANGLE = 10  # deg
+
+class PALP_CONST:
+    max_wrench_norm_OSC = 4.0
+    wrench_norm_FC = 5.5  # N
+    buffer_size = 100
+    dataset_buffer_size = 100
+    force_stable_thres = 0.05  # N
+    pos_stable_thres = 1e-4  # m
+    above_height = 0.01
+    palpate_depth = 0.035
+    wrench_oscill_hz = 100
+    t_oscill = 2  # oscillation period (s)
+    angle_oscill = 10  # deg
+    seed = 100
+    ctrl_freq = 80
+    grid_size = 0.0025  # m
+    kernel_scale = 2  # normalized grid space units
+    random_sample_count = 20  # normalized grid space units
+    stiffness_normalization = 700
+
 
 BBOX_DOCTOR_ROI = np.array(
     [
-        [0.548153139174615, -0.008732814440511275, 0.5863492023312757],
-        [0.5482251892809066, -0.008733453524682347, -0.4187626842806253],
-        [0.5327764686331437, -0.009876358127164728, 0.5863481008022411],
-        [0.5471770428102752, 0.004392274240072257, 0.5863491240157328],
-        [0.5318724223750956, 0.0032480914692477334, -0.4187638641252031],
-        [0.531800372268804, 0.0032487305534188047, 0.5863480224866982],
-        [0.5472490929165669, 0.004391635155901186, -0.41876276259616835],
-        [0.5328485187394353, -0.009876997211335798, -0.41876378580966006],
+        [0.5408100548268969, -0.024274716849727936, 0.584794524289607],
+        [0.5408328740458453, -0.024275135787011577, -0.4173593733857894],
+        [0.5287603932331272, -0.023360972249816016, 0.584794249534733],
+        [0.5415114869448344, -0.015024845872336573, 0.5847945363945514],
+        [0.5294846445700131, -0.014111520209708295, -0.41735963603571885],
+        [0.5294618253510647, -0.014111101272424653, 0.5847942616396774],
+        [0.5415343061637828, -0.015025264809620215, -0.4173593612808449],
+        [0.5287832124520756, -0.023361391187099657, -0.41735964814066334],
     ]
 )

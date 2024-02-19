@@ -1,105 +1,38 @@
 """Generate camera calibration dataset for https://github.com/ToyotaResearchInstitute/handical"""
 import argparse
-import ctypes
 import multiprocessing as mp
-import os
-import subprocess
-import sys
-from io import StringIO
 from multiprocessing import shared_memory
-from pathlib import Path
 
 import cv2
 import numpy as np
-import pinocchio as pin
 import yaml
-from scipy.spatial.transform import Rotation
-from tqdm import tqdm
 
 from deoxys.franka_interface import FrankaInterface
 from deoxys.utils import YamlConfig
-from deoxys.utils.config_utils import get_default_controller_config
 from deoxys.utils.input_utils import input2action
 from deoxys.utils.io_devices import SpaceMouse
-from deoxys.utils.log_utils import get_deoxys_example_logger
-from deoxys.utils.transform_utils import mat2euler, quat2mat
-from rpal.utils.constants import *
-from rpal.utils.data_utils import Hz
+import rpal.utils.constants as rpal_const
+from rpal.utils.data_utils import CalibrationWriter
 from rpal.utils.devices import RealsenseCapture
 from rpal.utils.keystroke_counter import KeyCode, KeystrokeCounter
 from rpal.utils.time_utils import Ratekeeper
 
-INT_SIZE = ctypes.sizeof(ctypes.c_int)
-
 PROPRIO_DIM = 7  # pos: x,y,z, rot: x,y,z,w
-
-
-class CalibrationWriter:
-    def __init__(self):
-        import shutil
-        import datetime
-
-        self.images = []
-        self.poses = []
-        self.calibration_path = RPAL_CFG_PATH / datetime.datetime.now().strftime(
-            "camera_calibration_%m-%d-%Y_%H-%M-%S"
-        )
-        self.poses_save_path = self.calibration_path / "final_ee_poses.txt"
-        self.img_save_path = self.calibration_path / "imgs"
-        self.calib_save_path = self.calibration_path / "config.yaml"
-
-        with open(str(BASE_CALIB_FOLDER / "config.yaml"), "r") as file:
-            self.calib_cfg = yaml.safe_load(file)
-
-        self.calib_cfg["path_to_intrinsics"] = str(self.calibration_path)
-        self.camera_name = "wrist_d415"
-
-    def add(self, im, pos_euler):
-        self.images.append(im)
-        self.poses.append(pos_euler)
-
-    def write(self):
-        import shutil
-
-        save = input("Save or not? (enter 0 or 1)")
-        save = bool(int(save))
-        if save:
-            shutil.copytree(str(BASE_CALIB_FOLDER), str(self.calibration_path))
-            os.mkdir(str(self.img_save_path))
-
-            with open(str(self.calib_save_path), "w") as outfile:
-                yaml.dump(self.calib_cfg, outfile, default_flow_style=False)
-            for i in tqdm(range(len(self.images))):
-                cv2.imwrite(
-                    str(self.img_save_path / f"_{self.camera_name}_image{i}.png"),
-                    self.images[i],
-                )
-            self.poses = np.array(self.poses, dtype=np.float32)
-            print(self.poses[:5])
-            poses = np.insert(
-                self.poses, 0, np.arange(1, self.poses.shape[0] + 1), axis=1
-            )
-            # Save the array to a text file
-            np.savetxt(
-                str(self.poses_save_path),
-                poses,
-                fmt=tuple(["%d"] + ["%.8f"] * (poses.shape[1] - 1)),
-                delimiter=" ",
-            )
-            print("Saved!")
-        else:
-            print("Aborted!")
 
 
 def deoxys_ctrl(shm_posearr_name, stop_event):
     existing_shm = shared_memory.SharedMemory(name=shm_posearr_name)
-    O_T_EE_shm = np.ndarray(PROPRIO_DIM, dtype=np.float32, buffer=existing_shm.buf)
+    O_T_EE = np.ndarray(PROPRIO_DIM, dtype=np.float32, buffer=existing_shm.buf)
     robot_interface = FrankaInterface(
-        str(RPAL_CFG_PATH / args.interface_cfg), use_visualizer=False, control_freq=20
+        str(rpal_const.PAN_PAN_FORCE_CFG),
+        use_visualizer=False,
+        control_freq=20,
     )
 
-    osc_delta_ctrl_cfg = YamlConfig(str(RPAL_CFG_PATH / OSC_DELTA_CFG)).as_easydict()
-    device = SpaceMouse(vendor_id=SPACEM_VENDOR_ID, product_id=SPACEM_PRODUCT_ID)
+    osc_delta_ctrl_cfg = YamlConfig(str(rpal_const.OSC_DELTA_CFG)).as_easydict()
+    device = SpaceMouse(
+        vendor_id=rpal_const.SPACEM_VENDOR_ID, product_id=rpal_const.SPACEM_PRODUCT_ID
+    )
     device.start_control()
 
     while len(robot_interface._state_buffer) == 0:
@@ -112,17 +45,17 @@ def deoxys_ctrl(shm_posearr_name, stop_event):
 
         action, grasp = input2action(
             device=device,
-            controller_type=OSC_CTRL_TYPE,
+            controller_type=rpal_const.OSC_CTRL_TYPE,
         )
 
         robot_interface.control(
-            controller_type=OSC_CTRL_TYPE,
+            controller_type=rpal_const.OSC_CTRL_TYPE,
             action=action,
             controller_cfg=osc_delta_ctrl_cfg,
         )
 
     robot_interface.control(
-        controller_type=OSC_CTRL_TYPE,
+        controller_type=rpal_const.OSC_CTRL_TYPE,
         action=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] + [1.0],
         controller_cfg=osc_delta_ctrl_cfg,
         termination=True,
@@ -147,7 +80,7 @@ if __name__ == "__main__":
 
     rs = RealsenseCapture()
     calibration_writer = CalibrationWriter()
-    with open(str(BASE_CALIB_FOLDER / "config.yaml"), "r") as file:
+    with open(str(rpal_const.BASE_CALIB_FOLDER / "config.yaml"), "r") as file:
         calib_cfg = yaml.safe_load(file)
     cb_size = (
         calibration_writer.calib_cfg["board"]["nrows"],
