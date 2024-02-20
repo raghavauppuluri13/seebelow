@@ -9,7 +9,6 @@ import open3d as o3d
 import pinocchio as pin
 from scipy.spatial.transform import Rotation
 
-
 from deoxys.franka_interface import FrankaInterface
 from deoxys.utils.transform_utils import quat2axisangle, quat2mat
 from deoxys.utils import YamlConfig
@@ -31,28 +30,12 @@ from rpal.utils.math_utils import rot_about_orthogonal_axes, unit
 from rpal.utils.proc_utils import RingBuffer, RunningStats
 import rpal.utils.constants as rpal_const
 from rpal.utils.constants import PALP_CONST
+from rpal.utils.constants import PalpateState
 from rpal.utils.pcd_utils import scan2mesh, mesh2roi
 from tfvis.visualizer import RealtimeVisualizer
 
 
-class PalpateState:
-    ABOVE = 0
-    PALPATE = 1
-    RETURN = 2
-    INIT = -1
-
-    def __init__(self):
-        self.state = self.INIT
-
-    def next(self):
-        if self.state == self.INIT:
-            self.state = self.ABOVE
-        else:
-            self.state = (self.state + 1) % 3
-
-
 def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Search):
-
     existing_shm = shared_memory.SharedMemory(name=shm_buffer)
     data_buffer = np.ndarray(1, dtype=rpal_const.PALP_DTYPE, buffer=existing_shm.buf)
     np.random.seed(PALP_CONST.seed)
@@ -99,6 +82,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
     osc_abs_ctrl_cfg = YamlConfig(str(rpal_const.OSC_ABSOLUTE_CFG)).as_easydict()
     robot_interface._state_buffer = []
     interp = Interpolator(interp_type=InterpType.SE3)
+
     # search = ActiveSearch(phantom_pcd, ActiveSearchAlgos.BO)
 
     def palpate(pos, O_surf_norm_unit=np.array([0, 0, 1])):
@@ -168,10 +152,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
                 running_stats.update(force_buffer.buffer)
 
             # done with palpation
-            if (
-                using_force_control_flag
-                and pos_buffer.std < PALP_CONST.pos_stable_thres
-            ):
+            if (using_force_control_flag and pos_buffer.std < PALP_CONST.pos_stable_thres):
                 print("FORCE STABLE!")
                 collect_points_flag = False
                 using_force_control_flag = False
@@ -193,8 +174,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
                 OSC_disp = curr_pose_se3.translation - palp_pt
                 if np.dot(unit(OSC_disp), wrench_unit) > 0:
                     stiffness = PALP_CONST.max_wrench_norm_OSC / np.linalg.norm(
-                        palp_pt - curr_pose_se3.translation
-                    )
+                        palp_pt - curr_pose_se3.translation)
                     stiffness /= PALP_CONST.stiffness_normalization
                     min_stiffness = min(stiffness, min_stiffness)
 
@@ -202,10 +182,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
             if palp_state.state == PalpateState.PALPATE:
                 assert palp_pt is not None
 
-                if (
-                    F_norm > PALP_CONST.max_wrench_norm_OSC
-                    and not using_force_control_flag
-                ):
+                if (F_norm > PALP_CONST.max_wrench_norm_OSC and not using_force_control_flag):
                     using_force_control_flag = True
                     collect_points_flag = True
                     oscill_start_time = time.time()
@@ -215,10 +192,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
             if using_force_control_flag:
                 if time.time() - oscill_start_time > PALP_CONST.t_oscill:
                     oscill_start_time = time.time()
-                idx = int(
-                    (time.time() - oscill_start_time)
-                    / (1 / PALP_CONST.wrench_oscill_hz)
-                )
+                idx = int((time.time() - oscill_start_time) / (1 / PALP_CONST.wrench_oscill_hz))
                 action = np.zeros(9)
                 assert wrench_unit is not None
                 theta_phi = force_oscill_traj[idx]["position"]
@@ -279,9 +253,7 @@ if __name__ == "__main__":
     surface_mesh = scan2mesh(pcd)
     roi_pcd = mesh2roi(surface_mesh, bbox_pts=rpal_const.BBOX_DOCTOR_ROI)
     # roi_pcd = mesh2roi(surface_mesh)
-    surface_grid_map = SurfaceGridMap(
-        roi_pcd, grid_size=rpal_const.PALP_CONST.grid_size
-    )
+    surface_grid_map = SurfaceGridMap(roi_pcd, grid_size=rpal_const.PALP_CONST.grid_size)
     search = ActiveSearchWithRandomInit(
         ActiveSearchAlgos.BO,
         surface_grid_map,
