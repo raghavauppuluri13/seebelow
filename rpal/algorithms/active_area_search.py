@@ -4,13 +4,10 @@ Implementation of Active Area Search from Ma, Y., Garnett, R. &amp; Schneider, J
 @author Raghava Uppuluri
 """
 
-from collections import defaultdict
-
 import numpy as np
-from scipy.spatial import KDTree
 from scipy.stats import norm
 
-from rpal.algorithms.gp import GP, SquaredExpKernel
+from rpal.algorithms.gp import SquaredExpKernel
 from rpal.algorithms.grid import SurfaceGridMap
 from rpal.algorithms.quadtree import QuadTree
 

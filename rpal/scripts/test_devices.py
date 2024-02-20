@@ -1,9 +1,7 @@
-import time
-
 import numpy as np
+from rpal.utils.devices import ForceSensor
+from rpal.utils.data_utils import Hz
 
-from devices import ForceSensor, RealsenseCapture
-from utils import Hz
 
 if __name__ == "__main__":
 
@@ -17,5 +15,5 @@ if __name__ == "__main__":
         Fxyz = fs.read()
         if Fxyz is not None:
             Frms = np.sqrt(np.sum(Fxyz**2))
-            # print(Frms)
+            print(Fxyz)
             hz.clock()

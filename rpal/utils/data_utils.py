@@ -1,12 +1,14 @@
-import math
 import queue
-import threading
 import time
-from pathlib import Path
-
 import numpy as np
 import open3d as o3d
 import yaml
+import datetime
+import os
+import shutil
+
+import rpal.utils.constants as rpal_const
+from rpal.utils.config_utils import dict_from_class
 
 
 class Hz:
@@ -62,19 +64,15 @@ class Buffer:
 
 
 class DatasetWriter:
-    def __init__(self, cfg_args=None, print_hz=True):
-        import datetime
-        from rpal.utils.constants import RPAL_DATA_PATH
-        from pathlib import Path
-        import os
-
+    def __init__(self, print_hz=True):
         self.hz = Hz(print_hz=print_hz)
         self.save_buffer = []
         self.i = 0
 
         # Create dataset folders
-        self.dataset_folder = RPAL_DATA_PATH / datetime.datetime.now().strftime(
-            "dataset_%m-%d-%Y_%H-%M-%S"
+        self.dataset_folder = (
+            rpal_const.RPAL_DATA_PATH
+            / datetime.datetime.now().strftime("dataset_%m-%d-%Y_%H-%M-%S")
         )
         self.raw_pcd_dir = self.dataset_folder / "raw_pcd"
         self.timeseries_file = self.dataset_folder / "timeseries.npy"
@@ -82,10 +80,12 @@ class DatasetWriter:
         self.reconstruction_raw = self.dataset_folder / "reconstruction.txt"
         self.surface_pcd = self.dataset_folder / "surface.ply"
         os.mkdir(self.dataset_folder)
-
-        if cfg_args is not None:
-            with open(str(self.dataset_folder / "config.yml"), "w") as outfile:
-                yaml.dump(vars(cfg_args), outfile, default_flow_style=False)
+        with open(str(self.dataset_folder / "config.yml"), "w") as outfile:
+            yaml.dump(
+                dict_from_class(rpal_const.PALP_CONST),
+                outfile,
+                default_flow_style=False,
+            )
 
     def save_subsurface_pcd(self, pts):
         subsurface_pcd = o3d.geometry.PointCloud()
@@ -104,12 +104,67 @@ class DatasetWriter:
         save = input(f"Save or not to {str(self.dataset_folder)}? (enter 0 or 1)")
         save = bool(int(save))
         if not save:
-            import shutil
-
             shutil.rmtree(f"{str(self.dataset_folder)}")
 
     def add_sample(self, sample):
-        from rpal.utils.constants import PALP_DTYPE
-
-        assert sample.dtype == PALP_DTYPE
+        assert sample.dtype == rpal_const.PALP_DTYPE
         self.save_buffer.append(sample)
+
+
+class CalibrationWriter:
+    def __init__(self):
+        self.images = []
+        self.poses = []
+        self.calibration_path = (
+            rpal_const.RPAL_CFG_PATH
+            / datetime.datetime.now().strftime("camera_calibration_%m-%d-%Y_%H-%M-%S")
+        )
+        self.poses_save_path = self.calibration_path / "final_ee_poses.txt"
+        self.img_save_path = self.calibration_path / "imgs"
+        self.calib_save_path = self.calibration_path / "config.yaml"
+
+        with open(str(rpal_const.BASE_CALIB_FOLDER / "config.yaml"), "r") as file:
+            self.calib_cfg = yaml.safe_load(file)
+
+        self.calib_cfg["path_to_intrinsics"] = str(self.calibration_path)
+        self.camera_name = "wrist_d415"
+
+    def add(self, im, pos_quat):
+        self.images.append(im)
+        self.poses.append(pos_quat)
+
+    def write(self):
+        import cv2
+        import yaml
+        from tqdm import tqdm
+
+        save = input("Save or not? (enter 0 or 1)")
+        save = bool(int(save))
+        if save:
+            shutil.copytree(
+                str(rpal_const.BASE_CALIB_FOLDER), str(self.calibration_path)
+            )
+            os.mkdir(str(self.img_save_path))
+
+            with open(str(self.calib_save_path), "w") as outfile:
+                yaml.dump(self.calib_cfg, outfile, default_flow_style=False)
+            for i in tqdm(range(len(self.images))):
+                cv2.imwrite(
+                    str(self.img_save_path / f"_{self.camera_name}_image{i}.png"),
+                    self.images[i],
+                )
+            self.poses = np.array(self.poses, dtype=np.float32)
+            print(self.poses[:5])
+            poses = np.insert(
+                self.poses, 0, np.arange(1, self.poses.shape[0] + 1), axis=1
+            )
+            # Save the array to a text file
+            np.savetxt(
+                str(self.poses_save_path),
+                poses,
+                fmt=tuple(["%d"] + ["%.8f"] * (poses.shape[1] - 1)),
+                delimiter=" ",
+            )
+            print("Saved!")
+        else:
+            print("Aborted!")

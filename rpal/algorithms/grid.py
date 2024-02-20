@@ -11,6 +11,7 @@ from rpal.utils.pcd_utils import visualize_pcds
 class Grid:
     def __init__(self):
         self.grid = None
+        self._X_visited = []
 
     @cached_property
     def vectorized_states(self):
@@ -22,28 +23,39 @@ class Grid:
         states = states[:, np.newaxis, :]
         return states
 
-    def unvisited_states(self, X_visited: np.ndarray):
-        if len(X_visited) == 0:
+    def unvisited_states(self):
+        if len(self.X_visited) == 0:
             return self.vectorized_states
         all_states = self.vectorized_states
         all_states = np.ravel_multi_index(all_states.T, self.shape)
-        visited_states = np.ravel_multi_index(X_visited.T, self.shape)
+        visited_states = np.ravel_multi_index(self.X_visited.T, self.shape)
         new_states_flat = np.setdiff1d(all_states, visited_states, assume_unique=True)
         new_states = np.unravel_index(new_states_flat, self.shape)
         new_states = np.array(new_states).T
+        new_states = new_states[:, np.newaxis, :]
         return new_states
 
     def __getitem__(self, index):
         r, c = index
         return self.grid[r, c]
 
-    def sample_uniform(self, X_visited=None):
-        if X_visited is not None:
-            vectorized_states = self.unvisited_states(X_visited)
+    def update(self, index, value):
+        r, c = index
+        self._X_visited.append(index)
+        self.grid[r, c] = value
+
+    def sample_uniform(self, from_unvisited=False):
+        if from_unvisited:
+            vectorized_states = self.unvisited_states()
         else:
             vectorized_states = self.vectorized_states
         state = vectorized_states[np.random.randint(0, vectorized_states.shape[0])]
         return tuple(state.flatten())
+
+    @property
+    def X_visited(self):
+        visited = np.array(self._X_visited)
+        return np.array(visited)
 
     @property
     def shape(self):
@@ -56,6 +68,7 @@ class Grid:
 
 class GridMap2D(Grid):
     def __init__(self, r, c, grid_size=0.001):
+        super().__init__()
         self._r = r
         self._c = c
         self._grid_size = grid_size
@@ -72,6 +85,7 @@ class GridMap2D(Grid):
 
 class SurfaceGridMap(Grid):
     def __init__(self, pcd, grid_size=0.001, nn=10, max_r=100, max_c=100):
+        super().__init__()
         self._grid_size = grid_size
         self._nn = nn
 

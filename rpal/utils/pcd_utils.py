@@ -242,6 +242,7 @@ def pick_surface_bbox(pcd, bbox_pts=None):
         pts[:, -1] -= 1
         bbox_pts[4:8] = pts
     bbox = o3d.geometry.OrientedBoundingBox.create_from_points(o3d.utility.Vector3dVector(bbox_pts))
+    print(array2constant("BBOX_ROI", np.asarray(bbox.get_box_points())))
     return bbox
 
 
