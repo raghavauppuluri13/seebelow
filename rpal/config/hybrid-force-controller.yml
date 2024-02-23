@@ -1,6 +1,6 @@
 controller_type: RPAL_HYBRID_FORCE
 
-is_delta: false
+is_delta: true
 
 traj_interpolator_cfg:
   traj_interpolator_type: LINEAR_POSE

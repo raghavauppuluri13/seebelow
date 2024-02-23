@@ -113,7 +113,8 @@ class ActiveSearch(Search):
         np.ndarray:
             The estimated grid.
         """
-        return self.next_state, self.algo.grid_mean
+        print("grid mean_max", self.algo.grid_mean.max())
+        return self.next_state, self.algo.grid_mean.copy()
 
 
 class ActiveSearchWithRandomInit(Search):

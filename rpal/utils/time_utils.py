@@ -10,7 +10,7 @@ from setproctitle import getproctitle
 
 class Ratekeeper:
     def __init__(
-        self, rate: float, print_delay_threshold: Optional[float] = 0.0
+        self, rate: float, print_delay_threshold: Optional[float] = 0.0, name=""
     ) -> None:
         """Rate in Hz for ratekeeping. print_delay_threshold must be nonnegative."""
         self._interval = 1.0 / rate
@@ -18,7 +18,7 @@ class Ratekeeper:
         self._print_delay_threshold = print_delay_threshold
         self._frame = 0
         self._remaining = 0.0
-        self._process_name = getproctitle()
+        self._process_name = name + " " + getproctitle()
         self._dts = deque([self._interval], maxlen=100)
         self._last_monitor_time = time.monotonic()
 

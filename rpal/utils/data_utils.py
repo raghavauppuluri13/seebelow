@@ -79,6 +79,8 @@ class DatasetWriter:
         self.reconstruction_file = self.dataset_folder / "reconstruction.ply"
         self.reconstruction_raw = self.dataset_folder / "reconstruction.txt"
         self.surface_pcd = self.dataset_folder / "surface.ply"
+        self.grid_pcd = self.dataset_folder / "grid.ply"
+        self.roi_pcd = self.dataset_folder / "roi.ply"
         os.mkdir(self.dataset_folder)
         with open(str(self.dataset_folder / "config.yml"), "w") as outfile:
             yaml.dump(
@@ -93,11 +95,13 @@ class DatasetWriter:
         o3d.io.write_point_cloud(
             str(self.reconstruction_file.absolute()), subsurface_pcd
         )
-
         np.savetxt(str(self.reconstruction_raw), pts, fmt="%1.8f")
 
+    def save_grid_pcd(self, pcd):
+        o3d.io.write_point_cloud(str(self.grid_pcd.absolute()), pcd)
+
     def save_roi_pcd(self, pcd):
-        o3d.io.write_point_cloud(str(self.surface_pcd.absolute()), pcd)
+        o3d.io.write_point_cloud(str(self.roi_pcd.absolute()), pcd)
 
     def save(self):
         np.save(str(self.timeseries_file), np.array(self.save_buffer))

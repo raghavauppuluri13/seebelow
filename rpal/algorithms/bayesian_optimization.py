@@ -33,9 +33,9 @@ class BayesianOptimization:
         # print("EI_STD", ei_term.std())
         # print("EI_MEAN", ei_term.mean())
 
-        print("num of maxes", len(ei_term[ei_term >= ei_term.max()]))
+        # print("num of maxes", len(ei_term[ei_term >= ei_term.max()]))
         idx = np.argmax(ei_term)
-        print(idx)
+        # print(idx)
 
         # update grid_mean
 
@@ -58,14 +58,14 @@ def add_spots(grid_size, num_spots, spot_intensity, variance):
 
     # Apply Gaussian filter for smoothing
     smoothed_data = gaussian_filter(data, sigma=variance)
-    print(smoothed_data.max())
+    # print(smoothed_data.max())
     return smoothed_data
 
 
 if __name__ == "__main__":
     grid_size = (20, 20)
     gt_grid = add_spots(grid_size, 1, 10, 3.0)
-    gt_grid += np.random.normal(0, 0.01, grid_size)
+    # gt_grid += np.random.normal(0, 0.01, grid_size)
     gt_grid[gt_grid < 0] = 0
     gt_grid[gt_grid > 10] = 10
     gt_grid = gt_grid / gt_grid.max()  # Normalize

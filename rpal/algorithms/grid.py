@@ -284,3 +284,7 @@ class SurfaceGridMap(Grid):
     @property
     def grid_size(self):
         return self._grid_size
+
+    @property
+    def grid_pcd(self):
+        return self._grid_pcd
