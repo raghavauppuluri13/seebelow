@@ -9,6 +9,7 @@ from rpal.utils.constants import HISTORY_DTYPE
 
 
 class BayesianOptimization:
+
     def __init__(self, grid: Grid, kernel: SquaredExpKernel):
         self.grid = grid
         self.grid_mean = np.zeros(grid.shape)
@@ -31,11 +32,8 @@ class BayesianOptimization:
 
         # print("Y_MAX", y_visited.max())
         # print("EI_STD", ei_term.std())
-        # print("EI_MEAN", ei_term.mean())
-
-        print("num of maxes", len(ei_term[ei_term >= ei_term.max()]))
+        print("EI_MEAN", ei_term.mean())
         idx = np.argmax(ei_term)
-        print(idx)
 
         # update grid_mean
 
@@ -58,19 +56,18 @@ def add_spots(grid_size, num_spots, spot_intensity, variance):
 
     # Apply Gaussian filter for smoothing
     smoothed_data = gaussian_filter(data, sigma=variance)
-    print(smoothed_data.max())
     return smoothed_data
 
 
 if __name__ == "__main__":
     grid_size = (20, 20)
     gt_grid = add_spots(grid_size, 1, 10, 3.0)
-    gt_grid += np.random.normal(0, 0.01, grid_size)
+    #gt_grid += np.random.normal(0, 0.01, grid_size)
     gt_grid[gt_grid < 0] = 0
     gt_grid[gt_grid > 10] = 10
     gt_grid = gt_grid / gt_grid.max()  # Normalize
     grid = GridMap2D(*grid_size)
-    kernel = SquaredExpKernel(scale=2)
+    kernel = SquaredExpKernel(scale=1.162)
     bo = BayesianOptimization(grid, kernel)
 
     saved_posterior_means = []
@@ -82,10 +79,7 @@ if __name__ == "__main__":
     for i in range(100):
         x_next = bo.get_optimal_state()
         saved_posterior_means.append(
-            np.array(
-                (np.array(x_next), bo.grid_mean.copy()), dtype=HISTORY_DTYPE(grid_size)
-            )
-        )
+            np.array((np.array(x_next), bo.grid_mean.copy()), dtype=HISTORY_DTYPE(grid_size)))
         grid.update(x_next, y)
         y = gt_grid[x_next]
     ani = HeatmapAnimation(np.array(saved_posterior_means), ground_truth=gt_grid)

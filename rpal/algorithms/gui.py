@@ -6,6 +6,7 @@ from rpal.utils.constants import HISTORY_DTYPE
 
 
 class HeatmapAnimation:
+
     def __init__(self, data, ground_truth=None, cmap="hot", interval=200):
         """
         data: List of tuples, where each tuple contains two tuples each with
@@ -19,9 +20,8 @@ class HeatmapAnimation:
         self.frames = len(data)
 
         grid_size = data[0]["grid"].shape
-        assert data.dtype == HISTORY_DTYPE(grid_size), print(
-            data.dtype, "!=", HISTORY_DTYPE(grid_size)
-        )
+        assert data.dtype == HISTORY_DTYPE(grid_size), print(data.dtype, "!=",
+                                                             HISTORY_DTYPE(grid_size))
         self.ground_truth = ground_truth
 
         # Assuming each frame in data contains two tuples for two heatmaps
@@ -51,17 +51,20 @@ class HeatmapAnimation:
 
         # Add color bar for the heatmaps
         self.fig.colorbar(self.heatmap1, ax=self.ax1)
+        self.frame_label = self.ax1.text(0.02,
+                                         0.95,
+                                         '',
+                                         transform=self.ax1.transAxes,
+                                         fontsize=12,
+                                         verticalalignment='top',
+                                         color='white')
 
         # Initialize the markers for the 'X' marks
         init_mark1 = data[0]["sample_pt"]
-        (self.x_mark1,) = self.ax1.plot(
-            init_mark1[1], init_mark1[0], "wx", markersize=10
-        )
+        (self.x_mark1, ) = self.ax1.plot(init_mark1[1], init_mark1[0], "wx", markersize=10)
 
         # Create the animation object
-        self.ani = FuncAnimation(
-            self.fig, self.update, frames=self.frames, interval=self.interval
-        )
+        self.ani = FuncAnimation(self.fig, self.update, frames=self.frames, interval=self.interval)
 
     def update(self, frame):
         """Update function for animation."""
@@ -74,13 +77,13 @@ class HeatmapAnimation:
         # Update the positions of the 'X' marks
         self.x_mark1.set_data(next_mark1[1], next_mark1[0])
 
+        self.frame_label.set_text(f'Frame: {frame}')
+
         # Update color limits for both heatmaps
         self.heatmap1.set_clim(vmin=np.min(data_frame1), vmax=np.max(data_frame1))
 
         if self.ground_truth is not None:
-            self.heatmap2.set_clim(
-                vmin=np.min(self.ground_truth), vmax=np.max(self.ground_truth)
-            )
+            self.heatmap2.set_clim(vmin=np.min(self.ground_truth), vmax=np.max(self.ground_truth))
             self.heatmap2.set_data(self.ground_truth)
             return self.heatmap1, self.x_mark1, self.heatmap2
 
@@ -104,10 +107,8 @@ if __name__ == "__main__":
     frames = 10
     nx, ny = 100, 100
     # Each element in data is a tuple of tuples for two heatmaps and their 'X' marks
-    data = [
-        (((np.random.randint(nx), np.random.randint(ny)), np.random.rand(nx, ny)),)
-        for _ in range(frames)
-    ]
+    data = [(((np.random.randint(nx), np.random.randint(ny)), np.random.rand(nx, ny)), )
+            for _ in range(frames)]
 
     gt = (np.random.randint(nx), np.random.randint(ny)), np.random.rand(nx, ny)
 

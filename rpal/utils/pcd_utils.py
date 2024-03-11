@@ -2,6 +2,46 @@ import numpy as np
 import open3d as o3d
 from rpal.utils.constants import array2constant
 from scipy.spatial.transform import Rotation
+import matplotlib
+
+
+def inverse_crop(bbox, pcd):
+    inside_points = pcd.crop(bbox)
+    # Get the indices of the points that were not returned by the crop function, i.e., the points outside the bounding box
+    # First, create a set of all indices
+    all_indices = set(range(len(pcd.points)))
+    # Then, get the indices of points inside the bounding box
+    inside_indices = set([i for i in range(len(inside_points.points))])
+    # Now, find the difference to get indices of points outside the bounding box
+    outside_indices = all_indices - inside_indices
+    # Select the points outside the bounding box to create a new point cloud
+    inverse_cropped_pcd = pcd.select_by_index(list(outside_indices), invert=True)
+    return inverse_cropped_pcd
+
+
+def color_entity(entity,
+                 dir_vec=np.array([0, 0, 1]),
+                 origin=np.array([0, 0, 0]),
+                 color_map="rainbow"):
+    if isinstance(entity, o3d.geometry.TriangleMesh):
+        pcd = entity
+        pts_np = np.asarray(entity.vertices)
+    elif isinstance(entity, o3d.geometry.PointCloud):
+        pts_np = np.asarray(entity.points)
+    cmap = matplotlib.colormaps[color_map]
+    pt_vecs = pts_np - origin
+    pt_mag_along_dir = np.dot(pt_vecs, dir_vec)
+    norm = matplotlib.colors.Normalize(
+        vmin=pt_mag_along_dir.min(),
+        vmax=pt_mag_along_dir.max(),
+    )
+    colors = cmap(norm(pt_mag_along_dir))
+    if isinstance(entity, o3d.geometry.TriangleMesh):
+        entity.vertex_colors = o3d.utility.Vector3dVector(colors[:, :3])
+        return entity
+    elif isinstance(entity, o3d.geometry.PointCloud):
+        entity.colors = o3d.utility.Vector3dVector(colors[:, :3])
+    return entity
 
 
 def disk_pcd(radius, num_points):
@@ -122,16 +162,17 @@ def animate_point_cloud(pcd, other_geoms=[]):
     vis.destroy_window()
 
 
-def scan2mesh(pcd):
+def scan2mesh(pcd, crop=True):
     from rpal.utils.constants import BBOX_PHANTOM, GT_SCAN_POSE
 
-    bbox = pick_surface_bbox(pcd, bbox_pts=BBOX_PHANTOM)
-    pcd = pcd.crop(bbox)
-    pcd = pcd.voxel_down_sample(voxel_size=0.001)
-    camera = list(GT_SCAN_POSE[:3])
-    radius = 1 * 100
-    _, pt_map = pcd.hidden_point_removal(camera, radius)
-    pcd = pcd.select_by_index(pt_map)
+    if crop:
+        bbox = pick_surface_bbox(pcd, bbox_pts=BBOX_PHANTOM)
+        pcd = pcd.crop(bbox)
+        pcd = pcd.voxel_down_sample(voxel_size=0.001)
+        camera = list(GT_SCAN_POSE[:3])
+        radius = 1 * 100
+        _, pt_map = pcd.hidden_point_removal(camera, radius)
+        pcd = pcd.select_by_index(pt_map)
     pcd.compute_convex_hull()
     pcd.estimate_normals()
     pcd.orient_normals_consistent_tangent_plane(10)

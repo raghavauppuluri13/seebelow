@@ -1,3 +1,5 @@
+eval/
+meshes/*
 *.ckpts
 camera_calibration_*
 external
