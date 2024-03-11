@@ -9,6 +9,7 @@ from rpal.utils.pcd_utils import visualize_pcds
 
 
 class Grid:
+
     def __init__(self):
         self.grid = None
         self._X_visited = []
@@ -67,6 +68,7 @@ class Grid:
 
 
 class GridMap2D(Grid):
+
     def __init__(self, r, c, grid_size=0.001):
         super().__init__()
         self._r = r
@@ -84,6 +86,7 @@ class GridMap2D(Grid):
 
 
 class SurfaceGridMap(Grid):
+
     def __init__(self, pcd, grid_size=0.001, nn=10, max_r=100, max_c=100):
         super().__init__()
         self._grid_size = grid_size
@@ -111,14 +114,11 @@ class SurfaceGridMap(Grid):
                     bbox_pts.append(np.array([x, y, z]))
         bbox_pts = np.array(bbox_pts)
         self._bbox = o3d.geometry.OrientedBoundingBox.create_from_points(
-            o3d.utility.Vector3dVector(bbox_pts)
-        )
+            o3d.utility.Vector3dVector(bbox_pts))
         self._bbox.color = [1, 0, 0]
 
         # generate grid rotation mat
-        rot_bbox: o3d.geometry.OrientedBoundingBox = (
-            self._pcd.get_minimal_oriented_bounding_box()
-        )
+        rot_bbox: o3d.geometry.OrientedBoundingBox = (self._pcd.get_minimal_oriented_bounding_box())
         corners = np.asarray(rot_bbox.get_box_points())
         extent = rot_bbox.extent
         bbox_origin = corners[0]
@@ -150,13 +150,11 @@ class SurfaceGridMap(Grid):
             zaxis_origin = np.cross(xaxis_origin, yaxis_origin)
 
         self._T = np.eye(4)
-        self._T[:3, :3] = np.hstack(
-            [
-                xaxis_origin[:, np.newaxis],
-                yaxis_origin[:, np.newaxis],
-                zaxis_origin[:, np.newaxis],
-            ]
-        )
+        self._T[:3, :3] = np.hstack([
+            xaxis_origin[:, np.newaxis],
+            yaxis_origin[:, np.newaxis],
+            zaxis_origin[:, np.newaxis],
+        ])
         self._T[:3, 3] = grid_origin
 
         # cells are defined by their center point, normal vector, and xyz axes
@@ -175,14 +173,12 @@ class SurfaceGridMap(Grid):
                 return 0
 
             inds = self._bbox.get_point_indices_within_bounding_box(
-                o3d.utility.Vector3dVector([cell_center])
-            )
+                o3d.utility.Vector3dVector([cell_center]))
 
             # remove if not within bounding box
             if len(inds) > 0:
                 num_neighbors, inds, dists = self._pcd_tree.search_knn_vector_3d(
-                    cell_center, self._nn
-                )
+                    cell_center, self._nn)
 
                 # remove if a new cell is far away from any point in self._pcd
                 if np.min(dists) > self._grid_size:
@@ -206,9 +202,8 @@ class SurfaceGridMap(Grid):
                 new_cell_idx_in_x = (grid_idx[0] + 1, grid_idx[1] + 0)
                 new_cell_idx_in_y = (grid_idx[0] + 0, grid_idx[1] + 1)
 
-                return build_grid(
-                    new_cell_idx_center_dx, new_cell_idx_in_x
-                ) + build_grid(new_cell_idx_center_dy, new_cell_idx_in_y)
+                return build_grid(new_cell_idx_center_dx, new_cell_idx_in_x) + build_grid(
+                    new_cell_idx_center_dy, new_cell_idx_in_y)
             else:
                 return 0
 
@@ -254,8 +249,7 @@ class SurfaceGridMap(Grid):
                 corners_norm[:, :3] = corners
                 grid_T = np.eye(4)
                 grid_T[:3, :3] = np.hstack(
-                    [xaxis[:, np.newaxis], yaxis[:, np.newaxis], zaxis[:, np.newaxis]]
-                )
+                    [xaxis[:, np.newaxis], yaxis[:, np.newaxis], zaxis[:, np.newaxis]])
                 grid_T[:3, 3] = cell_center
                 tfs.append(grid_T)
         # original pcd is cyan
@@ -280,6 +274,10 @@ class SurfaceGridMap(Grid):
     @property
     def shape(self):
         return tuple(self._grid_shape)
+
+    @property
+    def grid_pcd(self):
+        return self._grid_pcd
 
     @property
     def grid_size(self):

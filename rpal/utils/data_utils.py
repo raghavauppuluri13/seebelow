@@ -64,15 +64,17 @@ class Buffer:
 
 
 class DatasetWriter:
-    def __init__(self, print_hz=True):
+    def __init__(self, prefix="", print_hz=True):
         self.hz = Hz(print_hz=print_hz)
         self.save_buffer = []
         self.i = 0
 
         # Create dataset folders
+        if not prefix == "":
+            prefix += "_"
         self.dataset_folder = (
             rpal_const.RPAL_DATA_PATH
-            / datetime.datetime.now().strftime("dataset_%m-%d-%Y_%H-%M-%S")
+            / datetime.datetime.now().strftime(f"{prefix}dataset_%m-%d-%Y_%H-%M-%S")
         )
         self.raw_pcd_dir = self.dataset_folder / "raw_pcd"
         self.timeseries_file = self.dataset_folder / "timeseries.npy"
@@ -103,10 +105,13 @@ class DatasetWriter:
     def save_roi_pcd(self, pcd):
         o3d.io.write_point_cloud(str(self.roi_pcd.absolute()), pcd)
 
-    def save(self):
+    def save(self, autosave=False):
         np.save(str(self.timeseries_file), np.array(self.save_buffer))
-        save = input(f"Save or not to {str(self.dataset_folder)}? (enter 0 or 1)")
-        save = bool(int(save))
+        if not autosave:
+            save = input(f"Save or not to {str(self.dataset_folder)}? (enter 0 or 1)")
+            save = bool(int(save))
+        else:
+            save = True
         if not save:
             shutil.rmtree(f"{str(self.dataset_folder)}")
 

@@ -70,7 +70,7 @@ if __name__ == "__main__":
     gt_grid[gt_grid > 10] = 10
     gt_grid = gt_grid / gt_grid.max()  # Normalize
     grid = GridMap2D(*grid_size)
-    kernel = SquaredExpKernel(scale=2)
+    kernel = SquaredExpKernel(scale=1.162)
     bo = BayesianOptimization(grid, kernel)
 
     saved_posterior_means = []

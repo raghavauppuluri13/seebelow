@@ -1,5 +1,6 @@
 import time
 from collections import deque
+import click
 from pathlib import Path
 import multiprocessing as mp
 from multiprocessing import shared_memory
@@ -17,7 +18,6 @@ from rpal.algorithms.search import (
     RandomSearch,
     SearchHistory,
     Search,
-    ActiveSearch,
     ActiveSearchWithRandomInit,
     ActiveSearchAlgos,
 )
@@ -55,6 +55,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
     palp_id = 0
     stiffness = 0.0
     search_history = SearchHistory()
+    CF_start_time = None
 
     oscill_start_time = None
     start_angles = np.full(2, -PALP_CONST.angle_oscill)  # theta, phi
@@ -83,8 +84,6 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
     osc_abs_ctrl_cfg = YamlConfig(str(rpal_const.OSC_ABSOLUTE_CFG)).as_easydict()
     robot_interface._state_buffer = []
     interp = Interpolator(interp_type=InterpType.SE3)
-
-    # search = ActiveSearch(phantom_pcd, ActiveSearchAlgos.BO)
 
     def palpate(pos, O_surf_norm_unit=np.array([0, 0, 1])):
         assert np.isclose(np.linalg.norm(O_surf_norm_unit), 1)
@@ -152,10 +151,12 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
             if force_buffer.overflowed():
                 running_stats.update(force_buffer.buffer)
 
+            # terminate palpation and reset goals
+
             # done with palpation
             if (
                 using_force_control_flag
-                and palp_progress >= 1
+                and (palp_progress >= 1 or time.time() - CF_start_time > 7.0)
                 # and pos_buffer.std < PALP_CONST.pos_stable_thres
             ):
                 print("palpation done")
@@ -163,11 +164,19 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
                 using_force_control_flag = False
                 state_transition()
                 palp_id += 1
+                if palp_id == PALP_CONST.max_palpations:
+                    print("terminate")
+                    palp_state.state = PalpateState.TERMINATE
+                    goals.clear()
+                    interp.init(curr_pose_se3, start_pose, steps=rpal_const.STEP_FAST)
 
             # initiate palpate
             if len(goals) > 0 and interp.done:
                 state_transition()
             elif len(goals) == 0 and interp.done:
+                if palp_state.state == PalpateState.TERMINATE:
+                    print("breaking")
+                    break
                 palp_pt, surf_normal = search.next()
                 search_history.add(*search.grid_estimate)
                 palpate(palp_pt, surf_normal)
@@ -188,9 +197,10 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
                 if (
                     Fxyz[2] >= PALP_CONST.max_Fz or palp_progress >= 1.0
                 ) and not using_force_control_flag:
+                    CF_start_time = time.time()
                     print("CONTOUR FOLLOWING!")
                     stiffness = Fxyz[2] / (
-                        np.linalg.norm(palp_pt - curr_pose_se3.translation) + 1e-6
+                        np.linalg.norm(curr_pose_se3.translation - palp_pt) + 1e-6
                     )
                     stiffness /= PALP_CONST.stiffness_normalization
                     using_force_control_flag = True
@@ -198,11 +208,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
                     oscill_start_time = time.time()
                     print("STIFFNESS: ", stiffness)
 
-                    search.update_outcome(
-                        stiffness
-                        if stiffness >= PALP_CONST.stiffness_tumor_filter
-                        else 0.0
-                    )
+                    search.update_outcome(stiffness)
 
             # control: force
             if using_force_control_flag:
@@ -266,28 +272,56 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
     robot_interface.close()
     search_history.save(save_folder)
     print("history saved")
+    stop_event.set()
     existing_shm.close()
 
 
-if __name__ == "__main__":
-
+@click.command()
+@click.option(
+    "--tumor",
+    "-t",
+    type=str,
+    help="tumor type [crescent,hemisphere]",
+    default="hemisphere",
+)
+@click.option("--algo", "-a", type=str, help="algorithm [bo, random]", default="random")
+@click.option(
+    "--select_bbox", "-b", type=bool, help="choose bounding box", default=False
+)
+@click.option("--max_palpations", "-m", type=int, help="max palpations", default=60)
+@click.option("--autosave", "-s", type=bool, help="autosave", default=False)
+def main(tumor, algo, select_bbox, max_palpations, autosave):
     pcd = o3d.io.read_point_cloud(str(rpal_const.SURFACE_SCAN_PATH))
     surface_mesh = scan2mesh(pcd)
-    roi_pcd = mesh2roi(surface_mesh, bbox_pts=rpal_const.BBOX_DOCTOR_ROI)
-    # roi_pcd = mesh2roi(surface_mesh)
+    PALP_CONST.max_palpations = max_palpations
+    PALP_CONST.algo = algo
+    PALP_CONST.seed = np.random.randint(1000)
+    PALP_CONST.tumor_type = tumor
+
+    if PALP_CONST.tumor_type == "hemisphere":
+        rpal_const.BBOX_DOCTOR_ROI = rpal_const.ROI_HEMISPHERE
+    elif PALP_CONST.tumor_type == "crescent":
+        rpal_const.BBOX_DOCTOR_ROI = rpal_const.ROI_CRESCENT
+    bbox_roi = rpal_const.BBOX_DOCTOR_ROI
+    if select_bbox:
+        bbox_roi = None
+
+    roi_pcd = mesh2roi(surface_mesh, bbox_pts=bbox_roi)
     surface_grid_map = SurfaceGridMap(
         roi_pcd, grid_size=rpal_const.PALP_CONST.grid_size
     )
-    search = ActiveSearchWithRandomInit(
-        ActiveSearchAlgos.BO,
-        surface_grid_map,
-        kernel_scale=rpal_const.PALP_CONST.kernel_scale,
-        random_sample_count=rpal_const.PALP_CONST.random_sample_count,
-    )
-    search = RandomSearch(surface_grid_map)
-    # search.grid.visualize()
-    dataset_writer = DatasetWriter(print_hz=False)
 
+    if algo == "bo":
+        search = ActiveSearchWithRandomInit(
+            ActiveSearchAlgos.BO,
+            surface_grid_map,
+            kernel_scale=rpal_const.PALP_CONST.kernel_scale,
+            random_sample_count=rpal_const.PALP_CONST.random_sample_count,
+        )
+    elif algo == "random":
+        search = RandomSearch(surface_grid_map)
+    # search.grid.visualize()
+    dataset_writer = DatasetWriter(prefix=f"{tumor}_{algo}", print_hz=False)
     data_buffer = np.zeros(1, dtype=rpal_const.PALP_DTYPE)
     shm = shared_memory.SharedMemory(create=True, size=data_buffer.nbytes)
     data_buffer = np.ndarray(data_buffer.shape, dtype=data_buffer.dtype, buffer=shm.buf)
@@ -307,7 +341,7 @@ if __name__ == "__main__":
     rtv.set_frame_tf("BASE", np.eye(4))
     rtv.add_frame("EEF", "BASE")
     try:
-        while True:
+        while not stop_event.is_set():
             if np.all(data_buffer["O_q_EE"] == 0):
                 # print("Waiting for deoxys...")
                 continue
@@ -343,6 +377,10 @@ if __name__ == "__main__":
     dataset_writer.save_subsurface_pcd(np.array(subsurface_pts).squeeze())
     dataset_writer.save_roi_pcd(roi_pcd)
     dataset_writer.save_grid_pcd(surface_grid_map.grid_pcd)
-    dataset_writer.save()
+    dataset_writer.save(autosave)
     shm.close()
     shm.unlink()
+
+
+if __name__ == "__main__":
+    main()
