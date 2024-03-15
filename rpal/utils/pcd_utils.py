@@ -183,7 +183,11 @@ def scan2mesh(pcd, crop=True):
     return mesh
 
 
-def mesh2roi(surface_mesh, bbox_pts=None):
+def print_bbox(bbox):
+    print(array2constant("BBOX_ROI", np.asarray(bbox.get_box_points())))
+
+
+def mesh2roi(surface_mesh, bbox_pts=None, return_mesh=False):
     surface_mesh = surface_mesh.subdivide_midpoint(number_of_iterations=1)
     surface_mesh.compute_vertex_normals()
     surface_mesh.remove_degenerate_triangles()
@@ -194,12 +198,35 @@ def mesh2roi(surface_mesh, bbox_pts=None):
 
     bbox: o3d.geometry.OrientedBoundingBox = pick_surface_bbox(surface_pcd, bbox_pts=bbox_pts)
 
-    print(array2constant("BBOX_ROI", np.asarray(bbox.get_box_points())))
+    if return_mesh:
+        surface_mesh = surface_mesh.crop(bbox)
+        return surface_mesh
 
     surface_pcd.estimate_normals()
     surface_pcd.normalize_normals()
     surface_pcd.orient_normals_consistent_tangent_plane(k=100)
     surface_pcd = surface_pcd.crop(bbox)
+    return surface_pcd
+
+
+def mesh2polyroi(surface_mesh, polybox_pts=None, return_mesh=False):
+    surface_mesh = surface_mesh.subdivide_midpoint(number_of_iterations=1)
+    surface_mesh.compute_vertex_normals()
+    surface_mesh.remove_degenerate_triangles()
+
+    surface_pcd = o3d.geometry.PointCloud()
+    surface_pcd.points = o3d.utility.Vector3dVector(np.asarray(surface_mesh.vertices))
+    surface_pcd.colors = o3d.utility.Vector3dVector(np.asarray(surface_mesh.vertex_colors))
+    bbox: o3d.visualization.SelectionPolygonVolume = pick_polygon_bbox(surface_pcd,
+                                                                       polybox_pts=polybox_pts)
+    print(array2constant("ROI", np.asarray(bbox.bounding_polygon)))
+    if return_mesh:
+        surface_mesh = bbox.crop_triangle_mesh(surface_mesh)
+        return surface_mesh
+    surface_pcd.estimate_normals()
+    surface_pcd.normalize_normals()
+    surface_pcd.orient_normals_consistent_tangent_plane(k=100)
+    surface_pcd = bbox.crop_point_cloud(surface_pcd)
     return surface_pcd
 
 
@@ -262,19 +289,37 @@ def box_center_to_corner(box_center):
     return line_set
 
 
+def get_picked_points(pcd):
+    print("")
+    print(" Press [shift + left click] to pick and [shift + right click] to undo point picking")
+    print(" After picking points, press 'Q' to close the window")
+
+    vis = o3d.visualization.VisualizerWithEditing()
+    vis.create_window()
+    vis.add_geometry(pcd)
+    vis.run()  # user picks points
+    vis.destroy_window()
+    return vis.get_picked_points()
+
+
+def pick_polygon_bbox(pcd, polybox_pts=None):
+    if polybox_pts is None:
+        print("Please pick points along your polygon to crop")
+        idx = get_picked_points(pcd)
+        pcd_npy = np.asarray(pcd.points)
+        polybox_pts = pcd_npy[idx]
+    polybox = o3d.visualization.SelectionPolygonVolume()
+    polybox.bounding_polygon = o3d.utility.Vector3dVector(polybox_pts)
+    polybox.orthogonal_axis = "z"
+    polybox.axis_max = 1
+    polybox.axis_min = -1
+    return polybox
+
+
 def pick_surface_bbox(pcd, bbox_pts=None):
     if bbox_pts is None:
-        print("")
-        print("1) Please pick 4 point as the corners your bounding box [shift + left click].")
-        print("   Press [shift + right click] to undo point picking")
-        print("2) After picking points, press 'Q' to close the window")
-
-        vis = o3d.visualization.VisualizerWithEditing()
-        vis.create_window()
-        vis.add_geometry(pcd)
-        vis.run()  # user picks points
-        vis.destroy_window()
-        points_idx = vis.get_picked_points()
+        print("Please pick 4 points according to your desired bounding box")
+        points_idx = get_picked_points(pcd)
         pcd_npy = np.asarray(pcd.points)
         bbox_pts = np.zeros((8, 3))
         pts = pcd_npy[points_idx]
@@ -283,7 +328,6 @@ def pick_surface_bbox(pcd, bbox_pts=None):
         pts[:, -1] -= 1
         bbox_pts[4:8] = pts
     bbox = o3d.geometry.OrientedBoundingBox.create_from_points(o3d.utility.Vector3dVector(bbox_pts))
-    print(array2constant("BBOX_ROI", np.asarray(bbox.get_box_points())))
     return bbox
 
 
