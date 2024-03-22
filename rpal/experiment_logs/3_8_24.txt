@@ -1,0 +1,45 @@
+ID   State      Output               E-Level  Times(r/u/s)   Command [run=1/1]
+38   running    /tmp/ts-out.22Meok                           python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True
+39   queued     (file)                                       python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True
+40   queued     (file)                                       python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True
+41   queued     (file)                                       python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True
+42   queued     (file)                                       python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True
+43   queued     (file)                                       python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True
+0    finished   /tmp/ts-out.FpCTuJ   0        86.62/56.06/8.62 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 5 --autosave True
+1    finished   /tmp/ts-out.q22228   0        598.41/277.57/80.12 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 50 --autosave True
+2    finished   /tmp/ts-out.ZCZqd4   0        607.89/285.42/75.98 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 50 --autosave True
+3    finished   /tmp/ts-out.xLXMfo   0        594.88/233.75/123.70 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 50 --autosave True
+4    finished   /tmp/ts-out.TRKsaf   0        643.57/305.91/76.43 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 50 --autosave True
+5    finished   /tmp/ts-out.MgSEvv   0        594.61/281.77/74.53 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 50 --autosave True
+6    finished   /tmp/ts-out.1vrpxz   0        641.10/302.68/77.19 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 50 --autosave True
+7    finished   /tmp/ts-out.2gMmFF   0        587.98/269.12/78.04 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 50 --autosave True
+8    finished   /tmp/ts-out.gVTluu   0        593.70/277.84/77.89 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 50 --autosave True
+9    finished   /tmp/ts-out.R2CQZR   0        599.03/285.40/77.98 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 50 --autosave True
+10   finished   /tmp/ts-out.iSB2Os   0        592.24/249.69/106.18 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 50 --autosave True
+11   finished   /tmp/ts-out.jmAcuw   2        1.66/2.23/1.46 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo bo --max_palpations 50 --autostspave True
+12   finished   /tmp/ts-out.M9cZK7   0        601.80/224.70/94.41 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo random --max_palpations 50 --autosave True
+13   finished   /tmp/ts-out.Xa1MlC   0        601.72/280.14/42.42 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo random --max_palpations 50 --autosave True
+14   finished   /tmp/ts-out.Eqhd4K   0        608.17/279.11/42.46 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo random --max_palpations 50 --autosave True
+15   finished   /tmp/ts-out.7VbwCu   0        599.90/277.67/43.35 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo random --max_palpations 50 --autosave True
+16   finished   /tmp/ts-out.kxEuSf   0        594.02/274.62/41.63 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo random --max_palpations 50 --autosave True
+17   finished   /tmp/ts-out.H7ZpIA   0        597.38/274.01/42.42 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo random --max_palpations 50 --autosave True
+18   finished   /tmp/ts-out.XO6qCt   0        601.62/266.86/51.88 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo random --max_palpations 50 --autosave True
+19   finished   /tmp/ts-out.DXaakq   0        620.45/283.81/43.52 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo random --max_palpations 50 --autosave True
+20   finished   /tmp/ts-out.ulNIuZ   0        604.56/277.68/42.73 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo random --max_palpations 50 --autosave True
+21   finished   /tmp/ts-out.Jdrt3v   0        597.13/270.69/46.79 python3 scripts/exploration_policy_curved_with_force.py --tumor hemisphere --algo random --max_palpations 50 --autosave True
+22   finished   /tmp/ts-out.Vjwc0S   0        1121.91/539.58/124.66 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo bo --max_palpations 80 --autosave True
+23   finished   /tmp/ts-out.VEoGnU   0        1069.34/488.97/133.36 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo bo --max_palpations 80 --autosave True
+24   finished   /tmp/ts-out.EqXx7w   0        1060.55/496.70/125.33 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo bo --max_palpations 80 --autosave True
+25   finished   /tmp/ts-out.SANKU7   0        1018.17/469.87/128.27 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo bo --max_palpations 80 --autosave True
+26   finished   /tmp/ts-out.DAgoyo   -1       1598.84/317.53/6.19 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo bo --max_palpations 80 --autosave True
+27   finished   /tmp/ts-out.YtuUG9   0        1043.67/483.13/126.82 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo bo --max_palpations 80 --autosave True
+28   finished   /tmp/ts-out.MNoVlS   0        970.82/455.42/120.97 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo bo --max_palpations 80 --autosave True
+29   finished   /tmp/ts-out.rCD3AY   0        1053.75/490.58/133.06 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo bo --max_palpations 80 --autosave True
+30   finished   /tmp/ts-out.Qud2II   0        1016.74/461.69/134.24 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo bo --max_palpations 80 --autosave True
+31   finished   /tmp/ts-out.mOgw3u   0        995.89/458.97/129.56 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo bo --max_palpations 80 --autosave True
+32   finished   /tmp/ts-out.MBSWel   0        991.84/445.01/65.40 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True
+33   finished   /tmp/ts-out.eFKJlU   0        989.31/439.45/74.00 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True
+34   finished   /tmp/ts-out.sZBRpr   0        1003.97/444.81/70.94 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True
+35   finished   /tmp/ts-out.SKVTGp   0        990.84/356.41/161.72 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True
+36   finished   /tmp/ts-out.xvrvTV   -1       1104.59/108.19/120.79 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True
+37   finished   /tmp/ts-out.XLDpfj   -1       1680.29/330.10/5.92 python3 scripts/exploration_policy_curved_with_force.py --tumor crescent --algo random --max_palpations 80 --autosave True

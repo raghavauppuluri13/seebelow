@@ -39,13 +39,14 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
     data_buffer = np.ndarray(1, dtype=rpal_const.PALP_DTYPE, buffer=existing_shm.buf)
     np.random.seed(PALP_CONST.seed)
     goals = deque([])
+    force_buffer = RingBuffer(PALP_CONST.buffer_size)
+    pos_buffer = RingBuffer(PALP_CONST.buffer_size)
+    running_stats = RunningStats()
+
     palp_state = PalpateState()
     curr_pose_se3 = pin.SE3.Identity()
     using_force_control_flag = False
     collect_points_flag = False
-    force_buffer = RingBuffer(PALP_CONST.buffer_size)
-    pos_buffer = RingBuffer(PALP_CONST.buffer_size)
-    running_stats = RunningStats()
     curr_eef_pose = None
     F_norm = 0.0
     Fxyz = np.zeros(3)
@@ -56,10 +57,10 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
     stiffness = 0.0
     search_history = SearchHistory()
     CF_start_time = None
-
     oscill_start_time = None
     start_angles = np.full(2, -PALP_CONST.angle_oscill)  # theta, phi
     end_angles = np.full(2, PALP_CONST.angle_oscill)
+    max_cf_time = 0.1 if PALP_CONST.discrete_only else PALP_CONST.max_cf_time
     force_oscill_out = generate_joint_space_min_jerk(
         start_angles,
         end_angles,
@@ -73,7 +74,6 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
         1 / PALP_CONST.ctrl_freq,
     )
     force_oscill_traj = force_oscill_out + force_oscill_in
-
     force_cap = ForceSensor()
     robot_interface = FrankaInterface(
         str(rpal_const.PAN_PAN_FORCE_CFG),
@@ -156,7 +156,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
             # done with palpation
             if (
                 using_force_control_flag
-                and (palp_progress >= 1 or time.time() - CF_start_time > 7.0)
+                and (palp_progress >= 1 or time.time() - CF_start_time > max_cf_time)
                 # and pos_buffer.std < PALP_CONST.pos_stable_thres
             ):
                 print("palpation done")
@@ -207,7 +207,6 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
                     collect_points_flag = True
                     oscill_start_time = time.time()
                     print("STIFFNESS: ", stiffness)
-
                     search.update_outcome(stiffness)
 
             # control: force
@@ -290,13 +289,21 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
 )
 @click.option("--max_palpations", "-m", type=int, help="max palpations", default=60)
 @click.option("--autosave", "-s", type=bool, help="autosave", default=False)
-def main(tumor, algo, select_bbox, max_palpations, autosave):
+@click.option("--seed", "-e", type=int, help="seed", default=None)
+@click.option("--debug", "-d", type=bool, help="runs visualizations", default=False)
+@click.option(
+    "--discrete_only", "-s", type=bool, help="discrete probing only", default=False
+)
+def main(
+    tumor, algo, select_bbox, max_palpations, autosave, seed, debug, discrete_only
+):
     pcd = o3d.io.read_point_cloud(str(rpal_const.SURFACE_SCAN_PATH))
     surface_mesh = scan2mesh(pcd)
     PALP_CONST.max_palpations = max_palpations
     PALP_CONST.algo = algo
-    PALP_CONST.seed = np.random.randint(1000)
+    PALP_CONST.seed = np.random.randint(1000) if seed is None else seed
     PALP_CONST.tumor_type = tumor
+    PALP_CONST.discrete_only = discrete_only
 
     if PALP_CONST.tumor_type == "hemisphere":
         rpal_const.BBOX_DOCTOR_ROI = rpal_const.ROI_HEMISPHERE
@@ -307,9 +314,12 @@ def main(tumor, algo, select_bbox, max_palpations, autosave):
         bbox_roi = None
 
     roi_pcd = mesh2roi(surface_mesh, bbox_pts=bbox_roi)
+    print("here")
     surface_grid_map = SurfaceGridMap(
         roi_pcd, grid_size=rpal_const.PALP_CONST.grid_size
     )
+    if debug:
+        surface_grid_map.visualize()
 
     if algo == "bo":
         search = ActiveSearchWithRandomInit(
