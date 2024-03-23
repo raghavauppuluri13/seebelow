@@ -22,6 +22,7 @@ RPAL_CKPT_PATH = Path(rpal.__file__).parent.absolute() / ".ckpts"
 
 CAMERA_CALIB_FOLDER = RPAL_CFG_PATH / "camera_calibration_12-16-2023_14-48-12"
 
+
 # deoxys controllers
 OSC_CTRL_TYPE = "OSC_POSE"
 FORCE_CTRL_TYPE = "RPAL_HYBRID_POSITION_FORCE"
@@ -34,11 +35,11 @@ PAN_PAN_FORCE_CFG = RPAL_CFG_PATH / "pan-pan-force.yml"
 
 # surface scan
 # SURFACE_SCAN_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_02-22-2024_12-29-44.ply"
-SURFACE_SCAN_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_03-21-2024_13-42-19.ply"
+SURFACE_SCAN_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_03-22-2024_18-53-24.ply"
 
 # GT_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_12-27-2023_19-22-31.ply"
 # GT_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_02-22-2024_10-43-10.ply"
-GT_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_03-20-2024_19-25-47.ply"
+GT_PATH = RPAL_PKG_PATH / "meshes" / "tumors_gt_03-22-2024_18-48-42.ply"
 
 # tumor color thresholding for ground truth collection
 TUMOR_HSV_THRESHOLD = (np.array([80, 136, 3]), np.array([115, 255, 19]))
