@@ -1,6 +1,6 @@
 import numpy as np
 import open3d as o3d
-from rpal.utils.constants import array2constant
+from seebelow.utils.constants import array2constant
 from scipy.spatial.transform import Rotation
 import matplotlib
 
@@ -187,7 +187,7 @@ def animate_point_cloud(pcd, other_geoms=[]):
 
 
 def scan2mesh(pcd, crop=True):
-    from rpal.utils.constants import BBOX_PHANTOM, GT_SCAN_POSE
+    from seebelow.utils.constants import BBOX_PHANTOM, GT_SCAN_POSE
 
     if crop:
         bbox = pick_surface_bbox(pcd, bbox_pts=BBOX_PHANTOM)

@@ -4,9 +4,9 @@ import cv2
 import numpy as np
 import open3d as o3d
 
-from rpal.utils.constants import *
-from rpal.utils.devices import RealsenseCapture
-from rpal.utils.segmentation_utils import get_color_mask, get_hsv_threshold
+from seebelow.utils.constants import *
+from seebelow.utils.devices import RealsenseCapture
+from seebelow.utils.segmentation_utils import get_color_mask, get_hsv_threshold
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--rgb", type=bool, default=False)

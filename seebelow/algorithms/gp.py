@@ -2,7 +2,7 @@ from typing import Tuple
 
 import numpy as np
 
-from rpal.algorithms.grid import GridMap2D
+from seebelow.algorithms.grid import GridMap2D
 
 
 class SquaredExpKernel:

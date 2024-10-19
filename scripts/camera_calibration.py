@@ -11,11 +11,11 @@ from deoxys.franka_interface import FrankaInterface
 from deoxys.utils import YamlConfig
 from deoxys.utils.input_utils import input2action
 from deoxys.utils.io_devices import SpaceMouse
-import rpal.utils.constants as rpal_const
-from rpal.utils.data_utils import CalibrationWriter
-from rpal.utils.devices import RealsenseCapture
-from rpal.utils.keystroke_counter import KeyCode, KeystrokeCounter
-from rpal.utils.time_utils import Ratekeeper
+import seebelow.utils.constants as seebelow_const
+from seebelow.utils.data_utils import CalibrationWriter
+from seebelow.utils.devices import RealsenseCapture
+from seebelow.utils.keystroke_counter import KeyCode, KeystrokeCounter
+from seebelow.utils.time_utils import Ratekeeper
 
 PROPRIO_DIM = 7  # pos: x,y,z, rot: x,y,z,w
 
@@ -24,14 +24,14 @@ def deoxys_ctrl(shm_posearr_name, stop_event):
     existing_shm = shared_memory.SharedMemory(name=shm_posearr_name)
     O_T_EE = np.ndarray(PROPRIO_DIM, dtype=np.float32, buffer=existing_shm.buf)
     robot_interface = FrankaInterface(
-        str(rpal_const.PAN_PAN_FORCE_CFG),
+        str(seebelow_const.PAN_PAN_FORCE_CFG),
         use_visualizer=False,
         control_freq=20,
     )
 
-    osc_delta_ctrl_cfg = YamlConfig(str(rpal_const.OSC_DELTA_CFG)).as_easydict()
+    osc_delta_ctrl_cfg = YamlConfig(str(seebelow_const.OSC_DELTA_CFG)).as_easydict()
     device = SpaceMouse(
-        vendor_id=rpal_const.SPACEM_VENDOR_ID, product_id=rpal_const.SPACEM_PRODUCT_ID
+        vendor_id=seebelow_const.SPACEM_VENDOR_ID, product_id=seebelow_const.SPACEM_PRODUCT_ID
     )
     device.start_control()
 
@@ -45,17 +45,17 @@ def deoxys_ctrl(shm_posearr_name, stop_event):
 
         action, grasp = input2action(
             device=device,
-            controller_type=rpal_const.OSC_CTRL_TYPE,
+            controller_type=seebelow_const.OSC_CTRL_TYPE,
         )
 
         robot_interface.control(
-            controller_type=rpal_const.OSC_CTRL_TYPE,
+            controller_type=seebelow_const.OSC_CTRL_TYPE,
             action=action,
             controller_cfg=osc_delta_ctrl_cfg,
         )
 
     robot_interface.control(
-        controller_type=rpal_const.OSC_CTRL_TYPE,
+        controller_type=seebelow_const.OSC_CTRL_TYPE,
         action=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] + [1.0],
         controller_cfg=osc_delta_ctrl_cfg,
         termination=True,
@@ -80,7 +80,7 @@ if __name__ == "__main__":
 
     rs = RealsenseCapture()
     calibration_writer = CalibrationWriter()
-    with open(str(rpal_const.BASE_CALIB_FOLDER / "config.yaml"), "r") as file:
+    with open(str(seebelow_const.BASE_CALIB_FOLDER / "config.yaml"), "r") as file:
         calib_cfg = yaml.safe_load(file)
     cb_size = (
         calibration_writer.calib_cfg["board"]["nrows"],

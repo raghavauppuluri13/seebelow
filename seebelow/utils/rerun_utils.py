@@ -1,7 +1,7 @@
 import rerun as rr
 import numpy as np
 import hashlib
-from rpal.utils.constants import HISTORY_DTYPE
+from seebelow.utils.constants import HISTORY_DTYPE
 import matplotlib
 
 

@@ -5,9 +5,9 @@ import numpy as np
 from deoxys.franka_interface import FrankaInterface
 from deoxys.utils import YamlConfig
 from deoxys.utils.log_utils import get_deoxys_example_logger
-from rpal.utils.control_utils import generate_joint_space_min_jerk
-from rpal.utils.constants import PALP_CONST
-import rpal.utils.constants as rpal_const
+from seebelow.utils.control_utils import generate_joint_space_min_jerk
+from seebelow.utils.constants import PALP_CONST
+import seebelow.utils.constants as seebelow_const
 
 logger = get_deoxys_example_logger()
 
@@ -29,11 +29,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     robot_interface = FrankaInterface(
-        str(rpal_const.PAN_PAN_FORCE_CFG),
+        str(seebelow_const.PAN_PAN_FORCE_CFG),
         use_visualizer=False,
         control_freq=PALP_CONST.ctrl_freq,
     )
-    force_ctrl_cfg = YamlConfig(str(rpal_const.FORCE_CTRL_CFG)).as_easydict()
+    force_ctrl_cfg = YamlConfig(str(seebelow_const.FORCE_CTRL_CFG)).as_easydict()
     robot_interface._state_buffer = []
 
     action = np.zeros(9)
@@ -55,7 +55,7 @@ if __name__ == "__main__":
             action[2] = -0.005
             print(action)
             robot_interface.control(
-                controller_type=rpal_const.FORCE_CTRL_TYPE,
+                controller_type=seebelow_const.FORCE_CTRL_TYPE,
                 action=action,
                 controller_cfg=force_ctrl_cfg,
             )

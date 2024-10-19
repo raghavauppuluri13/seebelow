@@ -4,8 +4,8 @@ from typing import Tuple, Type, TypeVar, List
 import numpy as np
 import open3d as o3d
 
-from rpal.utils.math_utils import project_axis_to_plane, unit
-from rpal.utils.pcd_utils import visualize_pcds
+from seebelow.utils.math_utils import project_axis_to_plane, unit
+from seebelow.utils.pcd_utils import visualize_pcds
 
 
 class Grid:

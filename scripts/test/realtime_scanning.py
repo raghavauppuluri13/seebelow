@@ -24,11 +24,11 @@ from deoxys.utils.input_utils import input2action
 from deoxys.utils.io_devices import SpaceMouse
 from deoxys.utils.log_utils import get_deoxys_example_logger
 from deoxys.utils.transform_utils import mat2euler, mat2quat, quat2mat
-from rpal.utils.constants import *
-from rpal.utils.data_utils import Hz
-from rpal.utils.devices import RealsenseCapture
-from rpal.utils.time_utils import Ratekeeper
-from rpal.utils.transform_utils import euler2mat
+from seebelow.utils.constants import *
+from seebelow.utils.data_utils import Hz
+from seebelow.utils.devices import RealsenseCapture
+from seebelow.utils.time_utils import Ratekeeper
+from seebelow.utils.transform_utils import euler2mat
 
 
 def deoxys_ctrl(shm_posearr_name, stop_event):
@@ -36,10 +36,10 @@ def deoxys_ctrl(shm_posearr_name, stop_event):
     O_T_EE_shm = np.ndarray(7, dtype=np.float32, buffer=existing_shm.buf)
     print(args.interface_cfg)
     robot_interface = FrankaInterface(
-        str(RPAL_CFG_PATH / PAN_PAN_FORCE_CFG), use_visualizer=False, control_freq=20
+        str(SEEBELOW_CFG_PATH / PAN_PAN_FORCE_CFG), use_visualizer=False, control_freq=20
     )
 
-    osc_delta_ctrl_cfg = YamlConfig(str(RPAL_CFG_PATH / OSC_DELTA_CFG)).as_easydict()
+    osc_delta_ctrl_cfg = YamlConfig(str(SEEBELOW_CFG_PATH / OSC_DELTA_CFG)).as_easydict()
     device = SpaceMouse(vendor_id=SPACEM_VENDOR_ID, product_id=SPACEM_PRODUCT_ID)
     device.start_control()
 
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     rs = RealsenseCapture()
     with open(
-        str(RPAL_CFG_PATH / args.calibration_cfg / "extrinsics.yaml"), "r"
+        str(SEEBELOW_CFG_PATH / args.calibration_cfg / "extrinsics.yaml"), "r"
     ) as file:
         calib_cfg = yaml.safe_load(file)
         xyzxyzw = calib_cfg[args.cam_name]

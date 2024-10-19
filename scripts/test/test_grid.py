@@ -5,9 +5,9 @@ import argparse
 import numpy as np
 import open3d as o3d
 
-from rpal.algorithms.search import ActiveSearch, ActiveSearchAlgos, RandomSearch
-from rpal.utils.constants import *
-from rpal.utils.pcd_utils import mesh2roi, scan2mesh
+from seebelow.algorithms.search import ActiveSearch, ActiveSearchAlgos, RandomSearch
+from seebelow.utils.constants import *
+from seebelow.utils.pcd_utils import mesh2roi, scan2mesh
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()

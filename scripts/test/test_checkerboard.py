@@ -12,7 +12,7 @@ objp[:, :2] = np.mgrid[0:7, 0:6].T.reshape(-1, 2)
 objpoints = []  # 3d point in real world space
 imgpoints = []  # 2d points in image plane.
 images = [
-    "/home/ruppulur/projects/robot-palpation/rpal/config/camera_calibration_12-16-2023_01-13-25/imgs/_wrist_d415_image30.png"
+    "/home/ruppulur/projects/robot-palpation/seebelow/config/camera_calibration_12-16-2023_01-13-25/imgs/_wrist_d415_image30.png"
 ]
 cb_size = (10, 6)
 for fname in images:

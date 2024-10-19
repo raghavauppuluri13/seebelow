@@ -5,9 +5,9 @@ from tqdm import tqdm
 import numpy as np
 import argparse
 import glob
-from rpal.utils.constants import *
-from rpal.utils.transform_utils import quat2mat
-from rpal.utils.pcd_utils import (
+from seebelow.utils.constants import *
+from seebelow.utils.transform_utils import quat2mat
+from seebelow.utils.pcd_utils import (
     scan2mesh,
     mesh2pcd,
     mesh2roi,
@@ -22,11 +22,11 @@ from rpal.utils.pcd_utils import (
     clustering,
     inverse_crop,
 )
-from rpal.algorithms.gui import HeatmapAnimation
+from seebelow.algorithms.gui import HeatmapAnimation
 import copy
 import matplotlib
 from datetime import datetime
-from rpal.utils.rerun_utils import pcd_to_rr, mesh_to_rr, vectors_to_rr
+from seebelow.utils.rerun_utils import pcd_to_rr, mesh_to_rr, vectors_to_rr
 import rerun as rr
 from rerun.datatypes import TranslationAndMat3x3
 import os
@@ -202,17 +202,17 @@ def main(dataset_path, use_glob, combine, tumor, use_rerun, use_cached_bbox_gt, 
     if use_glob:
         for tumor in TUMOR_ID.keys():
             for algo in ALGOS:
-                sets = glob.glob(str(RPAL_DATA_PATH / "*{}*{}*".format(tumor, algo)))
+                sets = glob.glob(str(SEEBELOW_DATA_PATH / "*{}*{}*".format(tumor, algo)))
                 dataset_map[(tumor, algo)] = np.arange(len(datasets), len(datasets) + len(sets))
-                datasets += [RPAL_DATA_PATH / s for s in sets]
+                datasets += [SEEBELOW_DATA_PATH / s for s in sets]
 
         f_scores = np.zeros((len(datasets), 2))
         print("Found {} datasets".format(len(datasets)))
     else:
-        datasets = [RPAL_DATA_PATH / dataset_path]
+        datasets = [SEEBELOW_DATA_PATH / dataset_path]
     if use_rerun:
         print("Init rerun")
-        rr.init("rpal_eval", spawn=False)
+        rr.init("seebelow_eval", spawn=False)
         rr.set_time_seconds("capture_time", 0)
     for i, dataset_path in enumerate(datasets):
         print(f"Evaluating {dataset_path.name}")
@@ -220,7 +220,7 @@ def main(dataset_path, use_glob, combine, tumor, use_rerun, use_cached_bbox_gt, 
 
         recon_realtime = []
         tumor_pcd_without_CF = o3d.geometry.PointCloud()
-        save_path = RPAL_MESH_PATH.parent / "eval" / f"eval_{dataset_path.name}"
+        save_path = SEEBELOW_MESH_PATH.parent / "eval" / f"eval_{dataset_path.name}"
         save_path.mkdir(parents=True, exist_ok=True)
 
         if use_rerun:

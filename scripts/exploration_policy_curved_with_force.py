@@ -13,30 +13,30 @@ from scipy.spatial.transform import Rotation
 from deoxys.franka_interface import FrankaInterface
 from deoxys.utils.transform_utils import quat2axisangle, quat2mat
 from deoxys.utils import YamlConfig
-from rpal.algorithms.grid import SurfaceGridMap
-from rpal.algorithms.search import (
+from seebelow.algorithms.grid import SurfaceGridMap
+from seebelow.algorithms.search import (
     RandomSearch,
     SearchHistory,
     Search,
     ActiveSearchWithRandomInit,
     ActiveSearchAlgos,
 )
-from rpal.utils.control_utils import generate_joint_space_min_jerk
-from rpal.utils.data_utils import DatasetWriter
-from rpal.utils.devices import ForceSensor
-from rpal.utils.interpolator import Interpolator, InterpType
-from rpal.utils.time_utils import Ratekeeper
-from rpal.utils.proc_utils import RingBuffer, RunningStats
-import rpal.utils.constants as rpal_const
-from rpal.utils.constants import PALP_CONST
-from rpal.utils.constants import PalpateState
-from rpal.utils.pcd_utils import scan2mesh, mesh2roi
+from seebelow.utils.control_utils import generate_joint_space_min_jerk
+from seebelow.utils.data_utils import DatasetWriter
+from seebelow.utils.devices import ForceSensor
+from seebelow.utils.interpolator import Interpolator, InterpType
+from seebelow.utils.time_utils import Ratekeeper
+from seebelow.utils.proc_utils import RingBuffer, RunningStats
+import seebelow.utils.constants as seebelow_const
+from seebelow.utils.constants import PALP_CONST
+from seebelow.utils.constants import PalpateState
+from seebelow.utils.pcd_utils import scan2mesh, mesh2roi
 from tfvis.visualizer import RealtimeVisualizer
 
 
 def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Search):
     existing_shm = shared_memory.SharedMemory(name=shm_buffer)
-    data_buffer = np.ndarray(1, dtype=rpal_const.PALP_DTYPE, buffer=existing_shm.buf)
+    data_buffer = np.ndarray(1, dtype=seebelow_const.PALP_DTYPE, buffer=existing_shm.buf)
     np.random.seed(PALP_CONST.seed)
     goals = deque([])
     force_buffer = RingBuffer(PALP_CONST.buffer_size)
@@ -76,12 +76,12 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
     force_oscill_traj = force_oscill_out + force_oscill_in
     force_cap = ForceSensor()
     robot_interface = FrankaInterface(
-        str(rpal_const.PAN_PAN_FORCE_CFG),
+        str(seebelow_const.PAN_PAN_FORCE_CFG),
         use_visualizer=False,
         control_freq=80,
     )
-    force_ctrl_cfg = YamlConfig(str(rpal_const.FORCE_CTRL_CFG)).as_easydict()
-    osc_abs_ctrl_cfg = YamlConfig(str(rpal_const.OSC_ABSOLUTE_CFG)).as_easydict()
+    force_ctrl_cfg = YamlConfig(str(seebelow_const.FORCE_CTRL_CFG)).as_easydict()
+    osc_abs_ctrl_cfg = YamlConfig(str(seebelow_const.OSC_ABSOLUTE_CFG)).as_easydict()
     robot_interface._state_buffer = []
     interp = Interpolator(interp_type=InterpType.SE3)
 
@@ -105,8 +105,8 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
         above_se3.rotation = R
 
         reset_pose = pin.SE3.Identity()
-        reset_pose.translation = rpal_const.RESET_PALP_POSE[:3]
-        reset_pose.rotation = quat2mat(rpal_const.RESET_PALP_POSE[3:7])
+        reset_pose.translation = seebelow_const.RESET_PALP_POSE[:3]
+        reset_pose.rotation = quat2mat(seebelow_const.RESET_PALP_POSE[3:7])
 
         goals.appendleft(above_se3)
         goals.appendleft(palp_se3)
@@ -114,9 +114,9 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
 
     def state_transition():
         palp_state.next()
-        steps = rpal_const.STEP_FAST
+        steps = seebelow_const.STEP_FAST
         if palp_state.state == PalpateState.PALPATE:
-            steps = rpal_const.STEP_SLOW
+            steps = seebelow_const.STEP_SLOW
         pose_goal = goals.pop()
         interp.init(curr_pose_se3, pose_goal, steps=steps)
 
@@ -124,15 +124,15 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
         continue
 
     start_pose = pin.SE3.Identity()
-    start_pose.translation = rpal_const.GT_SCAN_POSE[:3]
-    start_pose.rotation = quat2mat(rpal_const.GT_SCAN_POSE[3:7])
+    start_pose.translation = seebelow_const.GT_SCAN_POSE[:3]
+    start_pose.rotation = quat2mat(seebelow_const.GT_SCAN_POSE[3:7])
     goals.appendleft(start_pose)
 
     curr_eef_pose = robot_interface.last_eef_rot_and_pos
     curr_pose_se3.rotation = curr_eef_pose[0]
     curr_pose_se3.translation = curr_eef_pose[1]
     pose_goal = goals.pop()
-    interp.init(curr_pose_se3, pose_goal, steps=rpal_const.STEP_FAST)
+    interp.init(curr_pose_se3, pose_goal, steps=seebelow_const.STEP_FAST)
     try:
         while not stop_event.is_set():
             curr_eef_pose = robot_interface.last_eef_rot_and_pos
@@ -167,7 +167,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
                     print("terminate")
                     palp_state.state = PalpateState.TERMINATE
                     goals.clear()
-                    interp.init(curr_pose_se3, start_pose, steps=rpal_const.STEP_FAST)
+                    interp.init(curr_pose_se3, start_pose, steps=seebelow_const.STEP_FAST)
 
             # initiate palpate
             if len(goals) > 0 and interp.done:
@@ -215,7 +215,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
                 action[1] = oscill_pos[1]
                 action[2] = -0.005
                 robot_interface.control(
-                    controller_type=rpal_const.FORCE_CTRL_TYPE,
+                    controller_type=seebelow_const.FORCE_CTRL_TYPE,
                     action=action,
                     controller_cfg=force_ctrl_cfg,
                 )
@@ -233,7 +233,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
                 # print(action)
 
                 robot_interface.control(
-                    controller_type=rpal_const.OSC_CTRL_TYPE,
+                    controller_type=seebelow_const.OSC_CTRL_TYPE,
                     action=action,
                     controller_cfg=osc_abs_ctrl_cfg,
                 )
@@ -284,7 +284,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
 @click.option("--debug", "-d", type=bool, help="runs visualizations", default=False)
 @click.option("--discrete_only", "-s", type=bool, help="discrete probing only", default=False)
 def main(tumor, algo, select_bbox, max_palpations, autosave, seed, debug, discrete_only):
-    pcd = o3d.io.read_point_cloud(str(rpal_const.SURFACE_SCAN_PATH))
+    pcd = o3d.io.read_point_cloud(str(seebelow_const.SURFACE_SCAN_PATH))
     surface_mesh = scan2mesh(pcd)
     PALP_CONST.max_palpations = max_palpations
     PALP_CONST.algo = algo
@@ -293,16 +293,16 @@ def main(tumor, algo, select_bbox, max_palpations, autosave, seed, debug, discre
     PALP_CONST.discrete_only = discrete_only
 
     if PALP_CONST.tumor_type == "hemisphere":
-        rpal_const.BBOX_DOCTOR_ROI = rpal_const.ROI_HEMISPHERE
+        seebelow_const.BBOX_DOCTOR_ROI = seebelow_const.ROI_HEMISPHERE
     elif PALP_CONST.tumor_type == "crescent":
-        rpal_const.BBOX_DOCTOR_ROI = rpal_const.ROI_CRESCENT
-    bbox_roi = rpal_const.BBOX_DOCTOR_ROI
+        seebelow_const.BBOX_DOCTOR_ROI = seebelow_const.ROI_CRESCENT
+    bbox_roi = seebelow_const.BBOX_DOCTOR_ROI
     if select_bbox:
         bbox_roi = None
 
     roi_pcd = mesh2roi(surface_mesh, bbox_pts=bbox_roi)
     print("here")
-    surface_grid_map = SurfaceGridMap(roi_pcd, grid_size=rpal_const.PALP_CONST.grid_size)
+    surface_grid_map = SurfaceGridMap(roi_pcd, grid_size=seebelow_const.PALP_CONST.grid_size)
     if debug:
         surface_grid_map.visualize()
 
@@ -310,14 +310,14 @@ def main(tumor, algo, select_bbox, max_palpations, autosave, seed, debug, discre
         search = ActiveSearchWithRandomInit(
             ActiveSearchAlgos.BO,
             surface_grid_map,
-            kernel_scale=rpal_const.PALP_CONST.kernel_scale,
-            random_sample_count=rpal_const.PALP_CONST.random_sample_count,
+            kernel_scale=seebelow_const.PALP_CONST.kernel_scale,
+            random_sample_count=seebelow_const.PALP_CONST.random_sample_count,
         )
     elif algo == "random":
         search = RandomSearch(surface_grid_map)
     # search.grid.visualize()
     dataset_writer = DatasetWriter(prefix=f"{tumor}_{algo}", print_hz=False)
-    data_buffer = np.zeros(1, dtype=rpal_const.PALP_DTYPE)
+    data_buffer = np.zeros(1, dtype=seebelow_const.PALP_DTYPE)
     shm = shared_memory.SharedMemory(create=True, size=data_buffer.nbytes)
     data_buffer = np.ndarray(data_buffer.shape, dtype=data_buffer.dtype, buffer=shm.buf)
     stop_event = mp.Event()

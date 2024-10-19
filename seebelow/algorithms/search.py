@@ -2,12 +2,12 @@ from pathlib import Path
 import numpy as np
 import open3d as o3d
 
-from rpal.algorithms.active_area_search import ActiveAreaSearch
-from rpal.algorithms.bayesian_optimization import BayesianOptimization
-from rpal.algorithms.gp import SquaredExpKernel
-from rpal.algorithms.grid import SurfaceGridMap
-from rpal.algorithms.gui import HeatmapAnimation
-import rpal.utils.constants as rpal_const
+from seebelow.algorithms.active_area_search import ActiveAreaSearch
+from seebelow.algorithms.bayesian_optimization import BayesianOptimization
+from seebelow.algorithms.gp import SquaredExpKernel
+from seebelow.algorithms.grid import SurfaceGridMap
+from seebelow.algorithms.gui import HeatmapAnimation
+import seebelow.utils.constants as seebelow_const
 
 
 class SearchHistory:
@@ -18,7 +18,7 @@ class SearchHistory:
         self._history.append(
             np.array(
                 (np.array(next_state), grid),
-                dtype=rpal_const.HISTORY_DTYPE(grid.shape),
+                dtype=seebelow_const.HISTORY_DTYPE(grid.shape),
             )
         )
 
@@ -156,14 +156,14 @@ class ActiveSearchWithRandomInit(Search):
 
 
 if __name__ == "__main__":
-    from rpal.utils.pcd_utils import scan2mesh, mesh2roi, visualize_pcds
-    from rpal.utils.transform_utils import quat2mat
+    from seebelow.utils.pcd_utils import scan2mesh, mesh2roi, visualize_pcds
+    from seebelow.utils.transform_utils import quat2mat
     from scipy.spatial.transform import Rotation
 
     np.random.seed(100)
-    pcd = o3d.io.read_point_cloud(str(rpal_const.SURFACE_SCAN_PATH))
+    pcd = o3d.io.read_point_cloud(str(seebelow_const.SURFACE_SCAN_PATH))
     surface_mesh = scan2mesh(pcd)
-    roi_pcd = mesh2roi(surface_mesh, bbox_pts=rpal_const.BBOX_ROI)
+    roi_pcd = mesh2roi(surface_mesh, bbox_pts=seebelow_const.BBOX_ROI)
 
     search_history = SearchHistory()
     surface_grid_map = SurfaceGridMap(roi_pcd, grid_size=0.001)
@@ -181,7 +181,7 @@ if __name__ == "__main__":
         planner.update_outcome(1.0)
 
         T = np.eye(4)
-        O_R_E = quat2mat(rpal_const.GT_SCAN_POSE[-4:])
+        O_R_E = quat2mat(seebelow_const.GT_SCAN_POSE[-4:])
         result = Rotation.align_vectors(
             np.array([palp[1], np.array([0, -1, 0])]),
             np.array([[0, 0, -1], np.array([0, 1, 0])]),
@@ -197,7 +197,7 @@ if __name__ == "__main__":
 
     roi_pcd.paint_uniform_color([1, 0, 0])
 
-    gt_scan = o3d.io.read_point_cloud(str(rpal_const.GT_PATH))
+    gt_scan = o3d.io.read_point_cloud(str(seebelow_const.GT_PATH))
     visualize_pcds(
         [planner.grid._grid_pcd, gt_scan],
         meshes=[surface_mesh],

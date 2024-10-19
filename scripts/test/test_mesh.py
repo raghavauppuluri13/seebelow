@@ -9,9 +9,9 @@ import pinocchio as pin
 from scipy.spatial.transform import Rotation
 
 from interpolator import Interpolator, InterpType
-from rpal.utils.math_utils import unit
-from rpal.utils.pcd_utils import visualize_pcds
-from rpal.utils.transform_utils import pose2mat
+from seebelow.utils.math_utils import unit
+from seebelow.utils.pcd_utils import visualize_pcds
+from seebelow.utils.transform_utils import pose2mat
 
 parser = argparse.ArgumentParser(description="Time-series Heatmap Generator")
 parser.add_argument(

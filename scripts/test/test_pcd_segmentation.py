@@ -5,10 +5,10 @@ import cv2
 import numpy as np
 import open3d as o3d
 
-from rpal.utils.constants import *
-from rpal.utils.devices import RealsenseCapture
-from rpal.utils.pcd_utils import pick_surface_bbox, visualize_pcds
-from rpal.utils.segmentation_utils import get_color_mask, get_hsv_threshold
+from seebelow.utils.constants import *
+from seebelow.utils.devices import RealsenseCapture
+from seebelow.utils.pcd_utils import pick_surface_bbox, visualize_pcds
+from seebelow.utils.segmentation_utils import get_color_mask, get_hsv_threshold
 
 rs = RealsenseCapture()
 
@@ -21,4 +21,4 @@ im, pcd = rs.read()
 visualize_pcds([pcd])
 
 now_str = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
-o3d.io.write_point_cloud(str(RPAL_MESH_PATH / f"tumors_gt_{now_str}.ply"), pcd)
+o3d.io.write_point_cloud(str(SEEBELOW_MESH_PATH / f"tumors_gt_{now_str}.ply"), pcd)

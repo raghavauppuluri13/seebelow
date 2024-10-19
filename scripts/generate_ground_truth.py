@@ -11,32 +11,32 @@ from tfvis.visualizer import RealtimeVisualizer
 from deoxys.franka_interface import FrankaInterface
 from deoxys.utils import YamlConfig
 from deoxys.utils.transform_utils import quat2mat, quat2axisangle
-from rpal.utils.devices import RealsenseCapture
-from rpal.utils.pcd_utils import pick_surface_bbox
-from rpal.utils.time_utils import Ratekeeper
-from rpal.utils.transform_utils import euler2mat
-from rpal.utils.interpolator import Interpolator, InterpType
-import rpal.utils.constants as rpal_const
+from seebelow.utils.devices import RealsenseCapture
+from seebelow.utils.pcd_utils import pick_surface_bbox
+from seebelow.utils.time_utils import Ratekeeper
+from seebelow.utils.transform_utils import euler2mat
+from seebelow.utils.interpolator import Interpolator, InterpType
+import seebelow.utils.constants as seebelow_const
 
 
 def deoxys_ctrl(shm_posearr_name, stop_event):
     existing_shm = shared_memory.SharedMemory(name=shm_posearr_name)
     O_T_EE_posquat = np.ndarray(7, dtype=np.float32, buffer=existing_shm.buf)
     robot_interface = FrankaInterface(
-        str(rpal_const.PAN_PAN_FORCE_CFG), use_visualizer=False, control_freq=80
+        str(seebelow_const.PAN_PAN_FORCE_CFG), use_visualizer=False, control_freq=80
     )
 
-    osc_absolute_ctrl_cfg = YamlConfig(str(rpal_const.OSC_ABSOLUTE_CFG)).as_easydict()
+    osc_absolute_ctrl_cfg = YamlConfig(str(seebelow_const.OSC_ABSOLUTE_CFG)).as_easydict()
     interp = Interpolator(interp_type=InterpType.SE3)
 
     goals = []
 
     O_T_P = np.eye(4)
-    O_T_P[:3, 3] = rpal_const.BBOX_PHANTOM.mean(axis=0)
+    O_T_P[:3, 3] = seebelow_const.BBOX_PHANTOM.mean(axis=0)
     P_T_O = np.linalg.inv(O_T_P)
     O_T_E = np.eye(4)
-    O_T_E[:3, :3] = quat2mat(rpal_const.GT_SCAN_POSE[3:7])
-    O_T_E[:3, 3] = rpal_const.GT_SCAN_POSE[:3]
+    O_T_E[:3, :3] = quat2mat(seebelow_const.GT_SCAN_POSE[3:7])
+    O_T_E[:3, 3] = seebelow_const.GT_SCAN_POSE[:3]
 
     goals.append(O_T_E)
 
@@ -65,7 +65,7 @@ def deoxys_ctrl(shm_posearr_name, stop_event):
             goal_pose_se3.rotation = pose_goal[:3, :3]
             goal_pose_se3.translation = pose_goal[:3, 3]
             interp.init(
-                curr_pose_se3, goal_pose_se3, steps=int(rpal_const.STEP_FAST / 1)
+                curr_pose_se3, goal_pose_se3, steps=int(seebelow_const.STEP_FAST / 1)
             )
 
         action = np.zeros(7)
@@ -77,7 +77,7 @@ def deoxys_ctrl(shm_posearr_name, stop_event):
         action[3:6] = axis_angle
 
         robot_interface.control(
-            controller_type=rpal_const.OSC_CTRL_TYPE,
+            controller_type=seebelow_const.OSC_CTRL_TYPE,
             action=action,
             controller_cfg=osc_absolute_ctrl_cfg,
         )
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # print(np_to_constant("GT_SCAN_POSE", O_T_EE_posquat))
 
     with open(
-        str(rpal_const.RPAL_CFG_PATH / args.calibration_cfg / "extrinsics.yaml"), "r"
+        str(seebelow_const.SEEBELOW_CFG_PATH / args.calibration_cfg / "extrinsics.yaml"), "r"
     ) as file:
         calib_cfg = yaml.safe_load(file)
         xyzxyzw = calib_cfg[args.cam_name]
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     rtv.add_frame("CAM", "EEF")
     rtv.add_frame("TUMOR", "BASE")
 
-    selected_bbox = rpal_const.BBOX_PHANTOM
+    selected_bbox = seebelow_const.BBOX_PHANTOM
 
     while not stop_event.is_set():
         # _, new_pcd = rs.read(get_mask=lambda x: get_color_mask(x, TUMOR_HSV_THRESHOLD))
@@ -174,7 +174,7 @@ if __name__ == "__main__":
     print("CTRL STOPPED!")
 
     now_str = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
-    save_pth = str(rpal_const.RPAL_MESH_PATH / f"tumors_gt_{now_str}.ply")
+    save_pth = str(seebelow_const.SEEBELOW_MESH_PATH / f"tumors_gt_{now_str}.ply")
 
     print(f"saving to {save_pth}")
 

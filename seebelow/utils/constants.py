@@ -1,6 +1,6 @@
 from pathlib import Path
 import numpy as np
-import rpal
+import seebelow
 
 
 def array2constant(var_name: str, arr: np.ndarray) -> str:
@@ -12,29 +12,29 @@ SPACEM_VENDOR_ID = 9583
 SPACEM_PRODUCT_ID = 50741
 
 # useful paths
-RPAL_PKG_PATH = Path(rpal.__file__).parent.absolute()
-RPAL_CFG_PATH = Path(rpal.__file__).parent.parent.absolute() / "config"
-RPAL_MESH_PATH = Path(rpal.__file__).parent.parent.absolute() / "meshes"
-RPAL_DATA_PATH = Path(rpal.__file__).parent.parent.absolute() / "data"
-RPAL_CKPT_PATH = Path(rpal.__file__).parent.parent.absolute() / ".ckpts"
+SEEBELOW_PKG_PATH = Path(seebelow.__file__).parent.absolute()
+SEEBELOW_CFG_PATH = Path(seebelow.__file__).parent.parent.absolute() / "config"
+SEEBELOW_MESH_PATH = Path(seebelow.__file__).parent.parent.absolute() / "meshes"
+SEEBELOW_DATA_PATH = Path(seebelow.__file__).parent.parent.absolute() / "data"
+SEEBELOW_CKPT_PATH = Path(seebelow.__file__).parent.parent.absolute() / ".ckpts"
 
 # camera calibration
 
-CAMERA_CALIB_FOLDER = RPAL_CFG_PATH / "camera_calibration_12-16-2023_14-48-12"
+CAMERA_CALIB_FOLDER = SEEBELOW_CFG_PATH / "camera_calibration_12-16-2023_14-48-12"
 
 # deoxys controllers
 OSC_CTRL_TYPE = "OSC_POSE"
-FORCE_CTRL_TYPE = "RPAL_HYBRID_POSITION_FORCE"
-OSC_DELTA_CFG = RPAL_CFG_PATH / "osc-pose-controller-delta.yml"
-OSC_ABSOLUTE_CFG = RPAL_CFG_PATH / "osc-pose-controller.yml"
-JNT_POSITION_CFG = RPAL_CFG_PATH / "joint-position-controller.yml"
-FORCE_CTRL_CFG = RPAL_CFG_PATH / "hybrid-force-controller.yml"
-BASE_CALIB_FOLDER = RPAL_CFG_PATH / "base_camera_calib"
-PAN_PAN_FORCE_CFG = RPAL_CFG_PATH / "pan-pan-force.yml"
+FORCE_CTRL_TYPE = "SEEBELOW_HYBRID_POSITION_FORCE"
+OSC_DELTA_CFG = SEEBELOW_CFG_PATH / "osc-pose-controller-delta.yml"
+OSC_ABSOLUTE_CFG = SEEBELOW_CFG_PATH / "osc-pose-controller.yml"
+JNT_POSITION_CFG = SEEBELOW_CFG_PATH / "joint-position-controller.yml"
+FORCE_CTRL_CFG = SEEBELOW_CFG_PATH / "hybrid-force-controller.yml"
+BASE_CALIB_FOLDER = SEEBELOW_CFG_PATH / "base_camera_calib"
+PAN_PAN_FORCE_CFG = SEEBELOW_CFG_PATH / "pan-pan-force.yml"
 
 # surface scan
-SURFACE_SCAN_PATH = RPAL_MESH_PATH / "tumors_gt_03-22-2024_18-53-24.ply"
-GT_PATH = RPAL_MESH_PATH / "tumors_gt_03-22-2024_18-48-42.ply"
+SURFACE_SCAN_PATH = SEEBELOW_MESH_PATH / "tumors_gt_03-22-2024_18-53-24.ply"
+GT_PATH = SEEBELOW_MESH_PATH / "tumors_gt_03-22-2024_18-48-42.ply"
 
 # tumor color thresholding for ground truth collection
 TUMOR_HSV_THRESHOLD = (np.array([80, 136, 3]), np.array([115, 255, 19]))

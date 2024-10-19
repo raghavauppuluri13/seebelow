@@ -7,8 +7,8 @@ import datetime
 import os
 import shutil
 
-import rpal.utils.constants as rpal_const
-from rpal.utils.config_utils import dict_from_class
+import seebelow.utils.constants as seebelow_const
+from seebelow.utils.config_utils import dict_from_class
 
 
 class Hz:
@@ -73,7 +73,7 @@ class DatasetWriter:
         if not prefix == "":
             prefix += "_"
         self.dataset_folder = (
-            rpal_const.RPAL_DATA_PATH
+            seebelow_const.SEEBELOW_DATA_PATH
             / datetime.datetime.now().strftime(f"{prefix}dataset_%m-%d-%Y_%H-%M-%S")
         )
         self.raw_pcd_dir = self.dataset_folder / "raw_pcd"
@@ -86,7 +86,7 @@ class DatasetWriter:
         os.mkdir(self.dataset_folder)
         with open(str(self.dataset_folder / "config.yml"), "w") as outfile:
             yaml.dump(
-                dict_from_class(rpal_const.PALP_CONST),
+                dict_from_class(seebelow_const.PALP_CONST),
                 outfile,
                 default_flow_style=False,
             )
@@ -116,7 +116,7 @@ class DatasetWriter:
             shutil.rmtree(f"{str(self.dataset_folder)}")
 
     def add_sample(self, sample):
-        assert sample.dtype == rpal_const.PALP_DTYPE
+        assert sample.dtype == seebelow_const.PALP_DTYPE
         self.save_buffer.append(sample)
 
 
@@ -125,14 +125,14 @@ class CalibrationWriter:
         self.images = []
         self.poses = []
         self.calibration_path = (
-            rpal_const.RPAL_CFG_PATH
+            seebelow_const.SEEBELOW_CFG_PATH
             / datetime.datetime.now().strftime("camera_calibration_%m-%d-%Y_%H-%M-%S")
         )
         self.poses_save_path = self.calibration_path / "final_ee_poses.txt"
         self.img_save_path = self.calibration_path / "imgs"
         self.calib_save_path = self.calibration_path / "config.yaml"
 
-        with open(str(rpal_const.BASE_CALIB_FOLDER / "config.yaml"), "r") as file:
+        with open(str(seebelow_const.BASE_CALIB_FOLDER / "config.yaml"), "r") as file:
             self.calib_cfg = yaml.safe_load(file)
 
         self.calib_cfg["path_to_intrinsics"] = str(self.calibration_path)
@@ -151,7 +151,7 @@ class CalibrationWriter:
         save = bool(int(save))
         if save:
             shutil.copytree(
-                str(rpal_const.BASE_CALIB_FOLDER), str(self.calibration_path)
+                str(seebelow_const.BASE_CALIB_FOLDER), str(self.calibration_path)
             )
             os.mkdir(str(self.img_save_path))
 

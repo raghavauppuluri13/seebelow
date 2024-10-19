@@ -2,10 +2,10 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 from scipy.stats import norm
 
-from rpal.algorithms.gp import gp_posterior, SquaredExpKernel
-from rpal.algorithms.grid import Grid, GridMap2D
-from rpal.algorithms.gui import HeatmapAnimation
-from rpal.utils.constants import HISTORY_DTYPE
+from seebelow.algorithms.gp import gp_posterior, SquaredExpKernel
+from seebelow.algorithms.grid import Grid, GridMap2D
+from seebelow.algorithms.gui import HeatmapAnimation
+from seebelow.utils.constants import HISTORY_DTYPE
 
 
 class BayesianOptimization:

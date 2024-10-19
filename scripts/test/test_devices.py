@@ -1,6 +1,6 @@
 import numpy as np
-from rpal.utils.devices import ForceSensor, RealsenseCapture
-from rpal.utils.data_utils import Hz
+from seebelow.utils.devices import ForceSensor, RealsenseCapture
+from seebelow.utils.data_utils import Hz
 
 
 if __name__ == "__main__":

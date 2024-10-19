@@ -7,9 +7,9 @@ Implementation of Active Area Search from Ma, Y., Garnett, R. &amp; Schneider, J
 import numpy as np
 from scipy.stats import norm
 
-from rpal.algorithms.gp import SquaredExpKernel
-from rpal.algorithms.grid import SurfaceGridMap
-from rpal.algorithms.quadtree import QuadTree
+from seebelow.algorithms.gp import SquaredExpKernel
+from seebelow.algorithms.grid import SurfaceGridMap
+from seebelow.algorithms.quadtree import QuadTree
 
 
 class ActiveAreaSearch:

@@ -1,8 +1,8 @@
-import rpal.utils.constants as rpal_const
+import seebelow.utils.constants as seebelow_const
 import numpy as np
-from rpal.algorithms.grid import SurfaceGridMap
+from seebelow.algorithms.grid import SurfaceGridMap
 import open3d as o3d
-from rpal.utils.pcd_utils import scan2mesh, mesh2polyroi, visualize_pcds, inverse_crop, pick_polygon_bbox
+from seebelow.utils.pcd_utils import scan2mesh, mesh2polyroi, visualize_pcds, inverse_crop, pick_polygon_bbox
 
 ROI = np.array([[0.5325745344161987, 0.005577473901212215, 0.0685637779533863],
                 [0.5281904935836792, 0.00452816765755415, 0.06843702122569084],
@@ -28,7 +28,7 @@ RANDOM = 'dataset_02-22-2024_14-07-30'
 
 if __name__ == "__main__":
     pcd = o3d.io.read_point_cloud(
-        str(rpal_const.RPAL_MESH_PATH.parent / 'eval_old' / f'eval_{RANDOM}' /
+        str(seebelow_const.SEEBELOW_MESH_PATH.parent / 'eval_old' / f'eval_{RANDOM}' /
             'mesh_without_CF.ply'))
     #surface_mesh = scan2mesh(pcd)
 

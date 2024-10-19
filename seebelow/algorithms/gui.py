@@ -2,7 +2,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
-from rpal.utils.constants import HISTORY_DTYPE
+from seebelow.utils.constants import HISTORY_DTYPE
 
 
 class HeatmapAnimation:

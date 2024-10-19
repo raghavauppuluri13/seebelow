@@ -4,9 +4,9 @@ import yaml
 from tfvis.visualizer import PlaybackVisualizer
 
 from deoxys.utils.transform_utils import quat2mat
-from rpal.utils.time_utils import Ratekeeper
-from rpal.utils.transform_utils import euler2mat
-import rpal.utils.constants as rpal_const
+from seebelow.utils.time_utils import Ratekeeper
+from seebelow.utils.transform_utils import euler2mat
+import seebelow.utils.constants as seebelow_const
 
 
 def read_ee_poses(ee_poses_fn):
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     with open(
-        str(rpal_const.RPAL_CFG_PATH / args.calibration_cfg / "extrinsics.yaml"), "r"
+        str(seebelow_const.SEEBELOW_CFG_PATH / args.calibration_cfg / "extrinsics.yaml"), "r"
     ) as file:
         calib_cfg = yaml.safe_load(file)
         xyzwxyz = calib_cfg[args.cam_name]
@@ -42,7 +42,7 @@ if __name__ == "__main__":
         E_T_C[:3, 3] = xyzwxyz[:3]
 
     ee_poses = read_ee_poses(
-        str(rpal_const.RPAL_CFG_PATH / args.calibration_cfg / "final_ee_poses.txt")
+        str(seebelow_const.SEEBELOW_CFG_PATH / args.calibration_cfg / "final_ee_poses.txt")
     )
 
     pbv = PlaybackVisualizer()
