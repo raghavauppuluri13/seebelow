@@ -1,4 +1,7 @@
-eval/
+data_rerun/
+data/
+*.zip
+eval/*
 meshes/*
 *.ckpts
 camera_calibration_*

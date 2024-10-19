@@ -5,28 +5,51 @@ from scipy.spatial.transform import Rotation
 import matplotlib
 
 
-def inverse_crop(bbox, pcd):
-    inside_points = pcd.crop(bbox)
+def center_mesh(mesh):
+    m = copy.deepcopy(mesh)
+    center = m.get_center()
+    m.translate(-center)
+    return m
+
+
+def inverse_crop(bbox, entity):
+    is_mesh = isinstance(entity, o3d.geometry.TriangleMesh)
+    is_polybbox = isinstance(bbox, o3d.visualization.SelectionPolygonVolume)
+
+    if is_polybbox:
+        inside_points = bbox.crop_triangle_mesh(entity)
+    else:
+        inside_points = entity.crop(bbox)
+
+    if is_mesh:
+        entity_points = entity.vertices
+        inside_points_points = inside_points.vertices
+    else:
+        entity_points = entity.points
+        inside_points_points = inside_points.points
     # Get the indices of the points that were not returned by the crop function, i.e., the points outside the bounding box
     # First, create a set of all indices
-    all_indices = set(range(len(pcd.points)))
+    all_indices = set(range(len(entity_points)))
     # Then, get the indices of points inside the bounding box
-    inside_indices = set([i for i in range(len(inside_points.points))])
+    inside_indices = set([i for i in range(len(inside_points_points))])
     # Now, find the difference to get indices of points outside the bounding box
     outside_indices = all_indices - inside_indices
     # Select the points outside the bounding box to create a new point cloud
-    inverse_cropped_pcd = pcd.select_by_index(list(outside_indices), invert=True)
-    return inverse_cropped_pcd
+    inverse_cropped_entity = entity.select_by_index(list(inside_indices))
+    return inverse_cropped_entity
 
 
-def color_entity(
-    entity, dir_vec=np.array([0, 0, 1]), origin=np.array([0, 0, 0]), color_map="rainbow"
-):
+def color_entity(entity,
+                 dir_vec=np.array([0, 0, 1]),
+                 origin=np.array([0, 0, 0]),
+                 color_map="rainbow"):
     if isinstance(entity, o3d.geometry.TriangleMesh):
         pcd = entity
         pts_np = np.asarray(entity.vertices)
     elif isinstance(entity, o3d.geometry.PointCloud):
         pts_np = np.asarray(entity.points)
+    elif isinstance(entity, np.ndarray):
+        pts_np = entity
     cmap = matplotlib.colormaps[color_map]
     pt_vecs = pts_np - origin
     pt_mag_along_dir = np.dot(pt_vecs, dir_vec)
@@ -40,6 +63,8 @@ def color_entity(
         return entity
     elif isinstance(entity, o3d.geometry.PointCloud):
         entity.colors = o3d.utility.Vector3dVector(colors[:, :3])
+    elif isinstance(entity, np.ndarray):
+        return colors[:, :3]
     return entity
 
 
@@ -63,9 +88,7 @@ def disk_pcd(radius, num_points):
 def clustering(pcd, eps=0.02, min_points=10):
     # Cluster the point cloud using DBSCAN
     with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Debug) as cm:
-        labels = np.array(
-            pcd.cluster_dbscan(eps=eps, min_points=min_points, print_progress=True)
-        )
+        labels = np.array(pcd.cluster_dbscan(eps=eps, min_points=min_points, print_progress=True))
 
     # Get the maximum label to determine the number of clusters
     max_label = labels.max()
@@ -110,11 +133,9 @@ def color_icp(
 
         print("3-2. Estimate normal.")
         source_down.estimate_normals(
-            o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30)
-        )
+            o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30))
         target_down.estimate_normals(
-            o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30)
-        )
+            o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30))
 
         print("3-3. Applying colored point cloud registration")
         result_icp = o3d.pipelines.registration.registration_colored_icp(
@@ -123,15 +144,13 @@ def color_icp(
             radius,
             current_transformation,
             o3d.pipelines.registration.TransformationEstimationForColoredICP(),
-            o3d.pipelines.registration.ICPConvergenceCriteria(
-                relative_fitness=1e-6, relative_rmse=1e-6, max_iteration=iter
-            ),
+            o3d.pipelines.registration.ICPConvergenceCriteria(relative_fitness=1e-6,
+                                                              relative_rmse=1e-6,
+                                                              max_iteration=iter),
         )
 
     if vis:
-        draw_registration_result_original_color(
-            source, target, result_icp.transformation
-        )
+        draw_registration_result_original_color(source, target, result_icp.transformation)
     return result_icp.transformation
 
 
@@ -192,20 +211,21 @@ def print_bbox(bbox):
     print(array2constant("BBOX_ROI", np.asarray(bbox.get_box_points())))
 
 
+def mesh2pcd(mesh):
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(np.asarray(mesh.vertices))
+    pcd.colors = o3d.utility.Vector3dVector(np.asarray(mesh.vertex_colors))
+    return pcd
+
+
 def mesh2roi(surface_mesh, bbox_pts=None, return_mesh=False):
     surface_mesh = surface_mesh.subdivide_midpoint(number_of_iterations=1)
     surface_mesh.compute_vertex_normals()
     surface_mesh.remove_degenerate_triangles()
 
-    surface_pcd = o3d.geometry.PointCloud()
-    surface_pcd.points = o3d.utility.Vector3dVector(np.asarray(surface_mesh.vertices))
-    surface_pcd.colors = o3d.utility.Vector3dVector(
-        np.asarray(surface_mesh.vertex_colors)
-    )
+    surface_pcd = mesh2pcd(surface_mesh)
 
-    bbox: o3d.geometry.OrientedBoundingBox = pick_surface_bbox(
-        surface_pcd, bbox_pts=bbox_pts
-    )
+    bbox: o3d.geometry.OrientedBoundingBox = pick_surface_bbox(surface_pcd, bbox_pts=bbox_pts)
 
     if return_mesh:
         surface_mesh = surface_mesh.crop(bbox)
@@ -225,12 +245,9 @@ def mesh2polyroi(surface_mesh, polybox_pts=None, return_mesh=False):
 
     surface_pcd = o3d.geometry.PointCloud()
     surface_pcd.points = o3d.utility.Vector3dVector(np.asarray(surface_mesh.vertices))
-    surface_pcd.colors = o3d.utility.Vector3dVector(
-        np.asarray(surface_mesh.vertex_colors)
-    )
-    bbox: o3d.visualization.SelectionPolygonVolume = pick_polygon_bbox(
-        surface_pcd, polybox_pts=polybox_pts
-    )
+    surface_pcd.colors = o3d.utility.Vector3dVector(np.asarray(surface_mesh.vertex_colors))
+    bbox: o3d.visualization.SelectionPolygonVolume = pick_polygon_bbox(surface_pcd,
+                                                                       polybox_pts=polybox_pts)
     print(array2constant("ROI", np.asarray(bbox.bounding_polygon)))
     if return_mesh:
         surface_mesh = bbox.crop_triangle_mesh(surface_mesh)
@@ -252,22 +269,18 @@ def box_center_to_corner(box_center):
     rotation = box[6]
 
     # Create a bounding box outline
-    bounding_box = np.array(
-        [
-            [-l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2],
-            [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2],
-            [-h / 2, -h / 2, -h / 2, -h / 2, h / 2, h / 2, h / 2, h / 2],
-        ]
-    )
+    bounding_box = np.array([
+        [-l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2],
+        [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2],
+        [-h / 2, -h / 2, -h / 2, -h / 2, h / 2, h / 2, h / 2, h / 2],
+    ])
 
     # Standard 3x3 rotation matrix around the Z axis
-    rotation_matrix = np.array(
-        [
-            [np.cos(rotation), -np.sin(rotation), 0.0],
-            [np.sin(rotation), np.cos(rotation), 0.0],
-            [0.0, 0.0, 1.0],
-        ]
-    )
+    rotation_matrix = np.array([
+        [np.cos(rotation), -np.sin(rotation), 0.0],
+        [np.sin(rotation), np.cos(rotation), 0.0],
+        [0.0, 0.0, 1.0],
+    ])
 
     # Repeat the [x, y, z] eight times
     eight_points = np.tile(translation, (8, 1))
@@ -307,9 +320,7 @@ def box_center_to_corner(box_center):
 
 def get_picked_points(pcd):
     print("")
-    print(
-        " Press [shift + left click] to pick and [shift + right click] to undo point picking"
-    )
+    print(" Press [shift + left click] to pick and [shift + right click] to undo point picking")
     print(" After picking points, press 'Q' to close the window")
 
     vis = o3d.visualization.VisualizerWithEditing()
@@ -345,9 +356,7 @@ def pick_surface_bbox(pcd, bbox_pts=None):
         bbox_pts[:4] = pts
         pts[:, -1] -= 1
         bbox_pts[4:8] = pts
-    bbox = o3d.geometry.OrientedBoundingBox.create_from_points(
-        o3d.utility.Vector3dVector(bbox_pts)
-    )
+    bbox = o3d.geometry.OrientedBoundingBox.create_from_points(o3d.utility.Vector3dVector(bbox_pts))
     return bbox
 
 
@@ -366,8 +375,7 @@ def crop_pcd(pcd, R, t, scale, bbox_params, visualize=False):
     corners = get_centered_bbox(*bbox_params)
     corners *= scale
     aabb = o3d.geometry.AxisAlignedBoundingBox.create_from_points(
-        o3d.utility.Vector3dVector(corners)
-    )
+        o3d.utility.Vector3dVector(corners))
 
     # Crop the point cloud
     cropped_pcd = pcd.crop(aabb)
@@ -404,9 +412,9 @@ def visualize_pcds(pcds, meshes=[], frames=[], tfs=[], surf_norms=[], tf_size=0.
     for frame in frames:
         pcds.append(
             o3d.geometry.TriangleMesh.create_coordinate_frame(
-                size=tf_size, origin=list(frame)  # specify the size of coordinate frame
-            )
-        )
+                size=tf_size,
+                origin=list(frame)  # specify the size of coordinate frame
+            ))
 
     for tf in tfs:
         f = o3d.geometry.TriangleMesh.create_coordinate_frame(

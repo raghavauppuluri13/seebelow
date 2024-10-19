@@ -4,11 +4,11 @@ import sys
 from setuptools import setup, find_packages
 
 setup(
-    name="rpal",
+    name="seebelow",
     version="0.0.1",
     packages=find_packages(),
-    description="Robot Palpation Code",
-    url="https://github.com/raghavauppuluri13/robot-palpation",
+    description="codebase for the seebelow paper",
+    url="https://github.com/raghavauppuluri13/seebelow",
     author="Raghava Uppuluri",
     install_requires=[
         "open3d-cpu==0.17.0",

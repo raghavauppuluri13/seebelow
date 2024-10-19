@@ -154,11 +154,10 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
             # terminate palpation and reset goals
 
             # done with palpation
-            if (
-                using_force_control_flag
-                and (palp_progress >= 1 or time.time() - CF_start_time > max_cf_time)
-                # and pos_buffer.std < PALP_CONST.pos_stable_thres
-            ):
+            if (using_force_control_flag
+                    and (palp_progress >= 1 or time.time() - CF_start_time > max_cf_time)
+                    # and pos_buffer.std < PALP_CONST.pos_stable_thres
+                ):
                 print("palpation done")
                 collect_points_flag = False
                 using_force_control_flag = False
@@ -191,17 +190,13 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
 
                 # scalar projection of displacement along -surface normal normalized to max alotted displacement
                 # between 0 and 1
-                palp_progress = (
-                    np.dot(palp_disp, -surf_normal) / PALP_CONST.max_palp_disp
-                )
-                if (
-                    Fxyz[2] >= PALP_CONST.max_Fz or palp_progress >= 1.0
-                ) and not using_force_control_flag:
+                palp_progress = (np.dot(palp_disp, -surf_normal) / PALP_CONST.max_palp_disp)
+                if (Fxyz[2] >= PALP_CONST.max_Fz
+                        or palp_progress >= 1.0) and not using_force_control_flag:
                     CF_start_time = time.time()
                     print("CONTOUR FOLLOWING!")
-                    stiffness = Fxyz[2] / (
-                        np.linalg.norm(curr_pose_se3.translation - palp_pt) + 1e-6
-                    )
+                    stiffness = Fxyz[2] / (np.linalg.norm(curr_pose_se3.translation - palp_pt) +
+                                           1e-6)
                     stiffness /= PALP_CONST.stiffness_normalization
                     using_force_control_flag = True
                     collect_points_flag = True
@@ -213,9 +208,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
             if using_force_control_flag:
                 if time.time() - oscill_start_time > PALP_CONST.t_oscill:
                     oscill_start_time = time.time()
-                idx = int(
-                    (time.time() - oscill_start_time) / (1 / PALP_CONST.ctrl_freq)
-                )
+                idx = int((time.time() - oscill_start_time) / (1 / PALP_CONST.ctrl_freq))
                 action = np.zeros(9)
                 oscill_pos = force_oscill_traj[idx]["position"]
                 action[0] = oscill_pos[0]
@@ -246,7 +239,7 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
                 )
             q, p = robot_interface.last_eef_quat_and_pos
             save_action = np.zeros(9)
-            save_action[: len(action)] = action
+            save_action[:len(action)] = action
             data_buffer[0] = (
                 Fxyz,
                 q.flatten(),  # quat
@@ -284,19 +277,13 @@ def main_ctrl(shm_buffer, stop_event: mp.Event, save_folder: Path, search: Searc
     default="hemisphere",
 )
 @click.option("--algo", "-a", type=str, help="algorithm [bo, random]", default="random")
-@click.option(
-    "--select_bbox", "-b", type=bool, help="choose bounding box", default=False
-)
+@click.option("--select_bbox", "-b", type=bool, help="choose bounding box", default=False)
 @click.option("--max_palpations", "-m", type=int, help="max palpations", default=60)
 @click.option("--autosave", "-s", type=bool, help="autosave", default=False)
 @click.option("--seed", "-e", type=int, help="seed", default=None)
 @click.option("--debug", "-d", type=bool, help="runs visualizations", default=False)
-@click.option(
-    "--discrete_only", "-s", type=bool, help="discrete probing only", default=False
-)
-def main(
-    tumor, algo, select_bbox, max_palpations, autosave, seed, debug, discrete_only
-):
+@click.option("--discrete_only", "-s", type=bool, help="discrete probing only", default=False)
+def main(tumor, algo, select_bbox, max_palpations, autosave, seed, debug, discrete_only):
     pcd = o3d.io.read_point_cloud(str(rpal_const.SURFACE_SCAN_PATH))
     surface_mesh = scan2mesh(pcd)
     PALP_CONST.max_palpations = max_palpations
@@ -315,9 +302,7 @@ def main(
 
     roi_pcd = mesh2roi(surface_mesh, bbox_pts=bbox_roi)
     print("here")
-    surface_grid_map = SurfaceGridMap(
-        roi_pcd, grid_size=rpal_const.PALP_CONST.grid_size
-    )
+    surface_grid_map = SurfaceGridMap(roi_pcd, grid_size=rpal_const.PALP_CONST.grid_size)
     if debug:
         surface_grid_map.visualize()
 

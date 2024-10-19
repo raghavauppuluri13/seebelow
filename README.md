@@ -1,3 +1,7 @@
-# robot-palpation
+# seebelow 
 
-3D reconstruction of a tumor using robot palpation
+
+
+## Setup
+
+1. Setup deoxsys 
