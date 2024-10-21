@@ -60,3 +60,20 @@ pip3 install -e .
 
 - [panda sensor coupler](https://cad.onshape.com/documents/3bb07ca61024c88e21eb68b6/w/43dd44890b4473c7ef849956/e/c67a8e99ae85981aa134053b)
 - [tumors](https://cad.onshape.com/documents/6073bfa153d8c47e7b077db7/w/b9bd611d4deeaa7d92c61b7f/e/801db759efd267626db254a6)
+
+
+## Citation
+
+If you use this code, please cite the following paper:
+
+```
+@misc{uppuluri2024seebelowsubdermal3dreconstruction,
+      title={SeeBelow: Sub-dermal 3D Reconstruction of Tumors with Surgical Robotic Palpation and Tactile Exploration}, 
+      author={Raghava Uppuluri and Abhinaba Bhattacharjee and Sohel Anwar and Yu She},
+      year={2024},
+      eprint={2408.13699},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2408.13699}, 
+}
+```
