@@ -1,0 +1,6 @@
+[submodule "external/deoxys_control"]
+	path = external/deoxys_control
+	url = https://github.com/raghavauppuluri13/deoxys_control
+[submodule "external/tecgihan_force_sensor_firmware"]
+	path = external/tecgihan_force_sensor_firmware
+	url = https://github.com/purdue-mars/tecgihan_force_sensor_firmware
