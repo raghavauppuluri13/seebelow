@@ -21,6 +21,7 @@ setup(
         "pyyaml",
         "serial",
         "pyrealsense2",
+        "tfvis @ git+https://github.com/raghavauppuluri13/tfvis.git",
         # deoxys
         "setproctitle",
         "easydict",
